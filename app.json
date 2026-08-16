@@ -1,18 +1,22 @@
 {
   "expo": {
-    "name": "eziel-mobile",
+    "name": "Eziel",
     "slug": "eziel-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "ezielmobile",
+    "scheme": "eziel",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.eziel.marketplace",
+      "buildNumber": "1",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.eziel.marketplace",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -28,7 +32,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#F97316",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
