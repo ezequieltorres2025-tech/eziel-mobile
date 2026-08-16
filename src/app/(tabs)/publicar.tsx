@@ -17,6 +17,10 @@ import {
   PublishBasicInfoForm,
   type PublishFocusedField,
 } from "../../features/publish/components/PublishBasicInfoForm";
+import {
+  PublishImagePicker,
+  type PublishImage,
+} from "../../features/publish/components/PublishImagePicker";
 import { PublishTypeCard } from "../../features/publish/components/PublishTypeCard";
 
 const ORANGE = "#F97316";
@@ -35,6 +39,7 @@ const BORDER = "#E2E8F0";
 const DISABLED = "#E2E8F0";
 
 type PublishType = "product" | "service";
+type PublishStep = 1 | 2 | 3;
 
 const PRODUCT_ICON = {
   ios: "bag.fill",
@@ -48,6 +53,28 @@ const SERVICE_ICON = {
   web: "handyman",
 } as const;
 
+function getStepLabel(step: PublishStep) {
+  switch (step) {
+    case 1:
+      return "Tipo de publicación";
+    case 2:
+      return "Información";
+    case 3:
+      return "Detalles";
+  }
+}
+
+function getProgressWidth(step: PublishStep): `${number}%` {
+  switch (step) {
+    case 1:
+      return "33.333%";
+    case 2:
+      return "66.666%";
+    case 3:
+      return "100%";
+  }
+}
+
 export default function PublishScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const descriptionRef = useRef<TextInput>(null);
@@ -55,20 +82,25 @@ export default function PublishScreen() {
 
   const [publishType, setPublishType] = useState<PublishType | null>(null);
 
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<PublishStep>(1);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
 
+  const [images, setImages] = useState<PublishImage[]>([]);
+
   const [focusedField, setFocusedField] = useState<PublishFocusedField>(null);
 
   const titleIsValid = title.trim().length >= 3;
+
   const descriptionIsValid = description.trim().length >= 10;
 
   const canSelectType = publishType !== null;
 
-  const canContinue = titleIsValid && descriptionIsValid;
+  const canContinueBasicInfo = titleIsValid && descriptionIsValid;
+
+  const hasRequiredImages = images.length > 0;
 
   const scrollToTop = (animated = true) => {
     requestAnimationFrame(() => {
@@ -85,28 +117,40 @@ export default function PublishScreen() {
     setFocusedField(null);
   };
 
+  const goToStep = (nextStep: PublishStep) => {
+    clearKeyboardState();
+    setStep(nextStep);
+    scrollToTop();
+  };
+
   const handleTypeContinue = () => {
     if (!canSelectType) return;
 
-    clearKeyboardState();
-    setStep(2);
-    scrollToTop();
+    goToStep(2);
+  };
+
+  const handleBasicInfoContinue = () => {
+    if (!canContinueBasicInfo) return;
+
+    goToStep(3);
   };
 
   const handleBack = () => {
-    clearKeyboardState();
-    setStep(1);
-    scrollToTop();
+    if (step === 3) {
+      goToStep(2);
+      return;
+    }
+
+    goToStep(1);
   };
 
   const handleChangeType = () => {
-    clearKeyboardState();
-    setStep(1);
-    scrollToTop();
+    goToStep(1);
   };
 
   const handlePriceChange = (value: string) => {
     const normalizedValue = value.replace(/[^\d]/g, "");
+
     setPrice(normalizedValue);
   };
 
@@ -145,30 +189,30 @@ export default function PublishScreen() {
             accessibilityRole="progressbar"
             accessibilityValue={{
               min: 1,
-              max: 2,
+              max: 3,
               now: step,
-              text: `Paso ${step} de 2`,
+              text: `Paso ${step} de 3`,
             }}
           >
             <View style={styles.progressHeader}>
-              <Text style={styles.progressLabel}>Paso {step} de 2</Text>
+              <Text style={styles.progressLabel}>Paso {step} de 3</Text>
 
-              <Text style={styles.progressValue}>
-                {step === 1 ? "Tipo de publicación" : "Información"}
-              </Text>
+              <Text style={styles.progressValue}>{getStepLabel(step)}</Text>
             </View>
 
             <View style={styles.progressTrack}>
               <View
                 style={[
                   styles.progressFill,
-                  step === 2 && styles.progressFillComplete,
+                  {
+                    width: getProgressWidth(step),
+                  },
                 ]}
               />
             </View>
           </View>
 
-          {step === 1 ? (
+          {step === 1 && (
             <>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>¿Qué querés publicar?</Text>
@@ -254,7 +298,9 @@ export default function PublishScreen() {
                 />
               </Pressable>
             </>
-          ) : (
+          )}
+
+          {step === 2 && (
             <>
               <View style={styles.selectedType}>
                 <View style={styles.selectedTypeIcon}>
@@ -323,21 +369,26 @@ export default function PublishScreen() {
                   <Text style={styles.secondaryButtonText}>Atrás</Text>
                 </Pressable>
 
-                <View
+                <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Continuar al siguiente paso"
+                  accessibilityLabel="Continuar al paso de detalles"
                   accessibilityState={{
-                    disabled: true,
+                    disabled: !canContinueBasicInfo,
                   }}
-                  style={[
+                  disabled={!canContinueBasicInfo}
+                  onPress={handleBasicInfoContinue}
+                  style={({ pressed }) => [
                     styles.continueButton,
-                    !canContinue && styles.primaryButtonDisabled,
+                    !canContinueBasicInfo && styles.primaryButtonDisabled,
+                    pressed &&
+                      canContinueBasicInfo &&
+                      styles.primaryButtonPressed,
                   ]}
                 >
                   <Text
                     style={[
                       styles.primaryButtonText,
-                      !canContinue && styles.primaryButtonTextDisabled,
+                      !canContinueBasicInfo && styles.primaryButtonTextDisabled,
                     ]}
                   >
                     Continuar
@@ -350,10 +401,157 @@ export default function PublishScreen() {
                       web: "arrow_forward",
                     }}
                     size={19}
-                    tintColor={canContinue ? SURFACE : MUTED_LIGHT}
+                    tintColor={canContinueBasicInfo ? SURFACE : MUTED_LIGHT}
+                  />
+                </Pressable>
+              </View>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <View style={styles.selectedType}>
+                <View style={styles.selectedTypeIcon}>
+                  <SymbolView
+                    name={selectedIcon}
+                    size={21}
+                    tintColor={ORANGE}
+                  />
+                </View>
+
+                <View style={styles.selectedTypeContent}>
+                  <Text style={styles.selectedTypeLabel}>Estás publicando</Text>
+
+                  <Text style={styles.selectedTypeTitle}>
+                    {selectedTypeLabel}
+                  </Text>
+                </View>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Cambiar tipo de publicación"
+                  onPress={handleChangeType}
+                  hitSlop={10}
+                  style={({ pressed }) => [
+                    styles.changeTypeButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.changeType}>Cambiar</Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.detailsHeader}>
+                <Text style={styles.sectionTitle}>Completá los detalles</Text>
+
+                <Text style={styles.sectionDescription}>
+                  Agregá imágenes y después completaremos categoría y ubicación.
+                </Text>
+              </View>
+
+              <PublishImagePicker images={images} onImagesChange={setImages} />
+
+              <View style={styles.imageStatus}>
+                <View
+                  style={[
+                    styles.imageStatusIcon,
+                    hasRequiredImages && styles.imageStatusIconReady,
+                  ]}
+                >
+                  <SymbolView
+                    name={
+                      hasRequiredImages
+                        ? {
+                            ios: "checkmark",
+                            android: "check",
+                            web: "check",
+                          }
+                        : {
+                            ios: "photo.fill",
+                            android: "photo_library",
+                            web: "photo_library",
+                          }
+                    }
+                    size={19}
+                    tintColor={hasRequiredImages ? SURFACE : MUTED}
+                  />
+                </View>
+
+                <View style={styles.imageStatusContent}>
+                  <Text style={styles.imageStatusTitle}>
+                    {hasRequiredImages ? "Imágenes listas" : "Falta una imagen"}
+                  </Text>
+
+                  <Text style={styles.imageStatusDescription}>
+                    {hasRequiredImages
+                      ? `${images.length} ${
+                          images.length === 1
+                            ? "imagen seleccionada"
+                            : "imágenes seleccionadas"
+                        }.`
+                      : "Agregá al menos una imagen para completar esta parte de la publicación."}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.actions}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={handleBack}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <SymbolView
+                    name={{
+                      ios: "arrow.left",
+                      android: "arrow_back",
+                      web: "arrow_back",
+                    }}
+                    size={19}
+                    tintColor={TEXT}
+                  />
+
+                  <Text style={styles.secondaryButtonText}>Atrás</Text>
+                </Pressable>
+
+                <View
+                  accessibilityRole="button"
+                  accessibilityLabel="Continuar con los detalles de la publicación"
+                  accessibilityState={{
+                    disabled: true,
+                  }}
+                  style={[
+                    styles.continueButton,
+                    !hasRequiredImages && styles.primaryButtonDisabled,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      !hasRequiredImages && styles.primaryButtonTextDisabled,
+                    ]}
+                  >
+                    Continuar
+                  </Text>
+
+                  <SymbolView
+                    name={{
+                      ios: "arrow.right",
+                      android: "arrow_forward",
+                      web: "arrow_forward",
+                    }}
+                    size={19}
+                    tintColor={hasRequiredImages ? SURFACE : MUTED_LIGHT}
                   />
                 </View>
               </View>
+
+              <Text style={styles.pendingNotice}>
+                Categoría y ubicación se incorporarán en este mismo paso antes
+                de habilitar el guardado real.
+              </Text>
             </>
           )}
         </ScrollView>
@@ -439,18 +637,17 @@ const styles = StyleSheet.create({
   },
 
   progressFill: {
-    width: "50%",
     height: "100%",
     borderRadius: 999,
     backgroundColor: ORANGE,
   },
 
-  progressFillComplete: {
-    width: "100%",
-  },
-
   sectionHeader: {
     marginBottom: 16,
+  },
+
+  detailsHeader: {
+    marginBottom: 20,
   },
 
   sectionTitle: {
@@ -584,6 +781,48 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
+  imageStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 15,
+    marginTop: 18,
+    borderRadius: 18,
+    backgroundColor: SURFACE,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+
+  imageStatusIcon: {
+    width: 38,
+    height: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+  },
+
+  imageStatusIconReady: {
+    backgroundColor: ORANGE,
+  },
+
+  imageStatusContent: {
+    flex: 1,
+  },
+
+  imageStatusTitle: {
+    color: TEXT,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
+  imageStatusDescription: {
+    color: MUTED,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+
   actions: {
     flexDirection: "row",
     gap: 10,
@@ -618,6 +857,15 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 18,
     backgroundColor: ORANGE,
+  },
+
+  pendingNotice: {
+    color: MUTED_LIGHT,
+    fontSize: 10,
+    lineHeight: 15,
+    textAlign: "center",
+    marginTop: 10,
+    paddingHorizontal: 18,
   },
 
   pressed: {
