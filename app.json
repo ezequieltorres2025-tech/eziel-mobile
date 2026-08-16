@@ -36,6 +36,22 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Eziel necesita acceso a tus fotos para que puedas agregar imágenes a tus publicaciones.",
+          "cameraPermission": "Eziel necesita acceso a la cámara para que puedas tomar fotos para tus publicaciones.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Eziel necesita acceder a tu ubicación mientras usás la app para ayudarte a indicar dónde se encuentra tu publicación.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
       ]
     ],
     "experiments": {
