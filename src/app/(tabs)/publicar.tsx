@@ -1,4 +1,4 @@
-import { SymbolView, type SymbolViewProps } from "expo-symbols";
+import { SymbolView } from "expo-symbols";
 import { useRef, useState } from "react";
 import {
   Keyboard,
@@ -12,6 +12,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import {
+  PublishBasicInfoForm,
+  type PublishFocusedField,
+} from "../../features/publish/components/PublishBasicInfoForm";
+import { PublishTypeCard } from "../../features/publish/components/PublishTypeCard";
 
 const ORANGE = "#F97316";
 const ORANGE_DARK = "#EA580C";
@@ -30,68 +36,17 @@ const DISABLED = "#E2E8F0";
 
 type PublishType = "product" | "service";
 
-type FocusedField = "title" | "description" | "price" | null;
-
-const PRODUCT_ICON: SymbolViewProps["name"] = {
+const PRODUCT_ICON = {
   ios: "bag.fill",
   android: "shopping_bag",
   web: "shopping_bag",
-};
+} as const;
 
-const SERVICE_ICON: SymbolViewProps["name"] = {
+const SERVICE_ICON = {
   ios: "wrench.and.screwdriver.fill",
   android: "handyman",
   web: "handyman",
-};
-
-interface PublishTypeCardProps {
-  title: string;
-  description: string;
-  icon: SymbolViewProps["name"];
-  selected: boolean;
-  onPress: () => void;
-}
-
-function PublishTypeCard({
-  title,
-  description,
-  icon,
-  selected,
-  onPress,
-}: PublishTypeCardProps) {
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      accessibilityLabel={title}
-      accessibilityHint={description}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.typeCard,
-        selected && styles.typeCardSelected,
-        pressed && styles.pressed,
-      ]}
-    >
-      <View style={[styles.typeIcon, selected && styles.typeIconSelected]}>
-        <SymbolView
-          name={icon}
-          size={28}
-          tintColor={selected ? SURFACE : ORANGE}
-        />
-      </View>
-
-      <View style={styles.typeContent}>
-        <Text style={styles.typeTitle}>{title}</Text>
-
-        <Text style={styles.typeDescription}>{description}</Text>
-      </View>
-
-      <View style={[styles.radio, selected && styles.radioSelected]}>
-        {selected && <View style={styles.radioDot} />}
-      </View>
-    </Pressable>
-  );
-}
+} as const;
 
 export default function PublishScreen() {
   const scrollRef = useRef<ScrollView>(null);
@@ -106,14 +61,14 @@ export default function PublishScreen() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
 
-  const [focusedField, setFocusedField] = useState<FocusedField>(null);
+  const [focusedField, setFocusedField] = useState<PublishFocusedField>(null);
 
   const titleIsValid = title.trim().length >= 3;
   const descriptionIsValid = description.trim().length >= 10;
 
-  const canContinue = publishType !== null;
+  const canSelectType = publishType !== null;
 
-  const canFinish = titleIsValid && descriptionIsValid;
+  const canContinue = titleIsValid && descriptionIsValid;
 
   const scrollToTop = (animated = true) => {
     requestAnimationFrame(() => {
@@ -125,25 +80,27 @@ export default function PublishScreen() {
     });
   };
 
-  const handleContinue = () => {
-    if (!canContinue) return;
-
+  const clearKeyboardState = () => {
     Keyboard.dismiss();
     setFocusedField(null);
+  };
+
+  const handleTypeContinue = () => {
+    if (!canSelectType) return;
+
+    clearKeyboardState();
     setStep(2);
     scrollToTop();
   };
 
   const handleBack = () => {
-    Keyboard.dismiss();
-    setFocusedField(null);
+    clearKeyboardState();
     setStep(1);
     scrollToTop();
   };
 
   const handleChangeType = () => {
-    Keyboard.dismiss();
-    setFocusedField(null);
+    clearKeyboardState();
     setStep(1);
     scrollToTop();
   };
@@ -267,20 +224,20 @@ export default function PublishScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{
-                  disabled: !canContinue,
+                  disabled: !canSelectType,
                 }}
-                disabled={!canContinue}
-                onPress={handleContinue}
+                disabled={!canSelectType}
+                onPress={handleTypeContinue}
                 style={({ pressed }) => [
                   styles.primaryButton,
-                  !canContinue && styles.primaryButtonDisabled,
-                  pressed && canContinue && styles.primaryButtonPressed,
+                  !canSelectType && styles.primaryButtonDisabled,
+                  pressed && canSelectType && styles.primaryButtonPressed,
                 ]}
               >
                 <Text
                   style={[
                     styles.primaryButtonText,
-                    !canContinue && styles.primaryButtonTextDisabled,
+                    !canSelectType && styles.primaryButtonTextDisabled,
                   ]}
                 >
                   Continuar
@@ -293,7 +250,7 @@ export default function PublishScreen() {
                     web: "arrow_forward",
                   }}
                   size={19}
-                  tintColor={canContinue ? SURFACE : MUTED_LIGHT}
+                  tintColor={canSelectType ? SURFACE : MUTED_LIGHT}
                 />
               </Pressable>
             </>
@@ -330,190 +287,19 @@ export default function PublishScreen() {
                 </Pressable>
               </View>
 
-              <View style={styles.formSection}>
-                <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Título</Text>
-
-                  <View
-                    style={[
-                      styles.inputContainer,
-                      focusedField === "title" && styles.inputContainerFocused,
-                    ]}
-                  >
-                    <TextInput
-                      value={title}
-                      onChangeText={setTitle}
-                      placeholder={
-                        publishType === "product"
-                          ? "Ej. iPhone 15 Pro 256 GB"
-                          : "Ej. Instalaciones eléctricas"
-                      }
-                      placeholderTextColor={MUTED_LIGHT}
-                      maxLength={80}
-                      returnKeyType="next"
-                      autoCapitalize="sentences"
-                      autoCorrect
-                      selectionColor={ORANGE}
-                      accessibilityLabel="Título de la publicación"
-                      onFocus={() => setFocusedField("title")}
-                      onBlur={() => setFocusedField(null)}
-                      onSubmitEditing={() => descriptionRef.current?.focus()}
-                      style={styles.input}
-                    />
-
-                    <Text style={styles.characterCount}>{title.length}/80</Text>
-                  </View>
-
-                  {title.length > 0 && !titleIsValid && (
-                    <Text style={styles.validationHint}>
-                      Escribí al menos 3 caracteres.
-                    </Text>
-                  )}
-                </View>
-
-                <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Descripción</Text>
-
-                  <View
-                    style={[
-                      styles.inputContainer,
-                      styles.descriptionContainer,
-                      focusedField === "description" &&
-                        styles.inputContainerFocused,
-                    ]}
-                  >
-                    <TextInput
-                      ref={descriptionRef}
-                      value={description}
-                      onChangeText={setDescription}
-                      placeholder={
-                        publishType === "product"
-                          ? "Contá el estado, características y todo lo importante."
-                          : "Explicá qué servicio ofrecés y qué incluye."
-                      }
-                      placeholderTextColor={MUTED_LIGHT}
-                      multiline
-                      textAlignVertical="top"
-                      maxLength={1000}
-                      autoCapitalize="sentences"
-                      autoCorrect
-                      selectionColor={ORANGE}
-                      accessibilityLabel="Descripción de la publicación"
-                      onFocus={() => setFocusedField("description")}
-                      onBlur={() => setFocusedField(null)}
-                      style={[styles.input, styles.descriptionInput]}
-                    />
-
-                    <Text style={styles.characterCount}>
-                      {description.length}/1000
-                    </Text>
-                  </View>
-
-                  {description.length > 0 && !descriptionIsValid && (
-                    <Text style={styles.validationHint}>
-                      La descripción necesita al menos 10 caracteres.
-                    </Text>
-                  )}
-                </View>
-
-                <View style={styles.field}>
-                  <View style={styles.fieldLabelRow}>
-                    <Text style={styles.fieldLabel}>Precio</Text>
-
-                    <Text style={styles.optional}>Opcional</Text>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.priceInput,
-                      focusedField === "price" && styles.inputContainerFocused,
-                    ]}
-                  >
-                    <Text style={styles.currency}>$</Text>
-
-                    <TextInput
-                      ref={priceRef}
-                      value={price}
-                      onChangeText={handlePriceChange}
-                      placeholder="0"
-                      placeholderTextColor={MUTED_LIGHT}
-                      keyboardType="numeric"
-                      inputMode="numeric"
-                      returnKeyType="done"
-                      selectionColor={ORANGE}
-                      accessibilityLabel="Precio"
-                      onFocus={() => setFocusedField("price")}
-                      onBlur={() => setFocusedField(null)}
-                      onSubmitEditing={() => Keyboard.dismiss()}
-                      style={styles.priceTextInput}
-                    />
-                  </View>
-
-                  <Text style={styles.fieldHelper}>
-                    Ingresá el valor sin puntos ni símbolos.
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.nextInfo}>
-                <View style={styles.nextInfoIcon}>
-                  <SymbolView
-                    name={{
-                      ios: "photo.on.rectangle.angled",
-                      android: "photo_library",
-                      web: "photo_library",
-                    }}
-                    size={22}
-                    tintColor={ORANGE}
-                  />
-                </View>
-
-                <Text style={styles.nextInfoText}>
-                  El siguiente bloque incorporará imágenes, categoría, ubicación
-                  y los demás datos necesarios para publicar.
-                </Text>
-              </View>
-
-              <View style={styles.formStatus}>
-                <View
-                  style={[
-                    styles.formStatusIcon,
-                    canFinish && styles.formStatusIconReady,
-                  ]}
-                >
-                  <SymbolView
-                    name={
-                      canFinish
-                        ? {
-                            ios: "checkmark",
-                            android: "check",
-                            web: "check",
-                          }
-                        : {
-                            ios: "info.circle.fill",
-                            android: "info",
-                            web: "info",
-                          }
-                    }
-                    size={19}
-                    tintColor={canFinish ? SURFACE : MUTED}
-                  />
-                </View>
-
-                <View style={styles.formStatusContent}>
-                  <Text style={styles.formStatusTitle}>
-                    {canFinish
-                      ? "Información básica completa"
-                      : "Completá los datos principales"}
-                  </Text>
-
-                  <Text style={styles.formStatusDescription}>
-                    {canFinish
-                      ? "El título y la descripción ya están listos para continuar."
-                      : "Necesitás un título y una descripción válidos antes de avanzar."}
-                  </Text>
-                </View>
-              </View>
+              <PublishBasicInfoForm
+                publishType={publishType ?? "product"}
+                title={title}
+                description={description}
+                price={price}
+                focusedField={focusedField}
+                descriptionRef={descriptionRef}
+                priceRef={priceRef}
+                onTitleChange={setTitle}
+                onDescriptionChange={setDescription}
+                onPriceChange={handlePriceChange}
+                onFocusChange={setFocusedField}
+              />
 
               <View style={styles.actions}>
                 <Pressable
@@ -538,19 +324,20 @@ export default function PublishScreen() {
                 </Pressable>
 
                 <View
-                  style={[
-                    styles.continueButton,
-                    !canFinish && styles.primaryButtonDisabled,
-                  ]}
                   accessibilityRole="button"
+                  accessibilityLabel="Continuar al siguiente paso"
                   accessibilityState={{
                     disabled: true,
                   }}
+                  style={[
+                    styles.continueButton,
+                    !canContinue && styles.primaryButtonDisabled,
+                  ]}
                 >
                   <Text
                     style={[
                       styles.primaryButtonText,
-                      !canFinish && styles.primaryButtonTextDisabled,
+                      !canContinue && styles.primaryButtonTextDisabled,
                     ]}
                   >
                     Continuar
@@ -563,7 +350,7 @@ export default function PublishScreen() {
                       web: "arrow_forward",
                     }}
                     size={19}
-                    tintColor={canFinish ? SURFACE : MUTED_LIGHT}
+                    tintColor={canContinue ? SURFACE : MUTED_LIGHT}
                   />
                 </View>
               </View>
@@ -684,74 +471,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 
-  typeCard: {
-    minHeight: 112,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    padding: 16,
-    borderRadius: 22,
-    backgroundColor: SURFACE,
-    borderWidth: 1.5,
-    borderColor: BORDER,
-  },
-
-  typeCardSelected: {
-    borderColor: ORANGE,
-    backgroundColor: ORANGE_SOFT,
-  },
-
-  typeIcon: {
-    width: 54,
-    height: 54,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 17,
-    backgroundColor: ORANGE_SOFT,
-  },
-
-  typeIconSelected: {
-    backgroundColor: ORANGE,
-  },
-
-  typeContent: {
-    flex: 1,
-  },
-
-  typeTitle: {
-    color: TEXT,
-    fontSize: 17,
-    fontWeight: "800",
-  },
-
-  typeDescription: {
-    color: MUTED,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 4,
-  },
-
-  radio: {
-    width: 22,
-    height: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: "#CBD5E1",
-  },
-
-  radioSelected: {
-    borderColor: ORANGE,
-  },
-
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: ORANGE,
-  },
-
   infoCard: {
     flexDirection: "row",
     gap: 13,
@@ -863,189 +582,6 @@ const styles = StyleSheet.create({
     color: ORANGE_DARK,
     fontSize: 12,
     fontWeight: "800",
-  },
-
-  formSection: {
-    gap: 20,
-  },
-
-  field: {
-    width: "100%",
-  },
-
-  fieldLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  fieldLabel: {
-    color: TEXT,
-    fontSize: 13,
-    fontWeight: "800",
-    marginBottom: 8,
-  },
-
-  optional: {
-    color: MUTED,
-    fontSize: 11,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-
-  inputContainer: {
-    position: "relative",
-    overflow: "hidden",
-    borderRadius: 17,
-    backgroundColor: SURFACE,
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-
-  inputContainerFocused: {
-    borderColor: ORANGE,
-  },
-
-  input: {
-    minHeight: 56,
-    paddingHorizontal: 16,
-    paddingRight: 52,
-    color: TEXT,
-    fontSize: 15,
-    fontWeight: "500",
-  },
-
-  descriptionContainer: {
-    minHeight: 140,
-  },
-
-  descriptionInput: {
-    minHeight: 140,
-    paddingTop: 15,
-    paddingBottom: 34,
-    paddingRight: 16,
-  },
-
-  characterCount: {
-    position: "absolute",
-    right: 12,
-    bottom: 10,
-    color: MUTED_LIGHT,
-    fontSize: 10,
-    fontWeight: "500",
-  },
-
-  validationHint: {
-    color: ORANGE_DARK,
-    fontSize: 11,
-    lineHeight: 16,
-    marginTop: 6,
-    marginLeft: 2,
-  },
-
-  fieldHelper: {
-    color: MUTED_LIGHT,
-    fontSize: 10,
-    lineHeight: 15,
-    marginTop: 6,
-    marginLeft: 2,
-  },
-
-  priceInput: {
-    minHeight: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    borderRadius: 17,
-    backgroundColor: SURFACE,
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-
-  currency: {
-    color: TEXT,
-    fontSize: 18,
-    fontWeight: "800",
-    marginRight: 8,
-  },
-
-  priceTextInput: {
-    flex: 1,
-    minHeight: 54,
-    color: TEXT,
-    fontSize: 15,
-    fontWeight: "600",
-    paddingVertical: 0,
-  },
-
-  nextInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 15,
-    marginTop: 24,
-    borderRadius: 18,
-    backgroundColor: SURFACE,
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-
-  nextInfoIcon: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 13,
-    backgroundColor: ORANGE_SOFT,
-  },
-
-  nextInfoText: {
-    flex: 1,
-    color: MUTED,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-
-  formStatus: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 15,
-    marginTop: 12,
-    borderRadius: 18,
-    backgroundColor: SURFACE,
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-
-  formStatusIcon: {
-    width: 38,
-    height: 38,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 12,
-    backgroundColor: "#F1F5F9",
-  },
-
-  formStatusIconReady: {
-    backgroundColor: ORANGE,
-  },
-
-  formStatusContent: {
-    flex: 1,
-  },
-
-  formStatusTitle: {
-    color: TEXT,
-    fontSize: 13,
-    fontWeight: "800",
-  },
-
-  formStatusDescription: {
-    color: MUTED,
-    fontSize: 11,
-    lineHeight: 16,
-    marginTop: 2,
   },
 
   actions: {
