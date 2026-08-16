@@ -17,11 +17,17 @@ import {
   PublishBasicInfoForm,
   type PublishFocusedField,
 } from "../../features/publish/components/PublishBasicInfoForm";
+import { PublishCategorySelector } from "../../features/publish/components/PublishCategorySelector";
 import {
   PublishImagePicker,
   type PublishImage,
 } from "../../features/publish/components/PublishImagePicker";
+import {
+  PublishLocationField,
+  type PublishLocationValue,
+} from "../../features/publish/components/PublishLocationField";
 import { PublishTypeCard } from "../../features/publish/components/PublishTypeCard";
+import type { ListingCategory } from "../../features/publish/constants";
 
 const ORANGE = "#F97316";
 const ORANGE_DARK = "#EA580C";
@@ -53,12 +59,21 @@ const SERVICE_ICON = {
   web: "handyman",
 } as const;
 
+const EMPTY_LOCATION: PublishLocationValue = {
+  label: "",
+  latitude: null,
+  longitude: null,
+  source: null,
+};
+
 function getStepLabel(step: PublishStep) {
   switch (step) {
     case 1:
       return "Tipo de publicación";
+
     case 2:
       return "Información";
+
     case 3:
       return "Detalles";
   }
@@ -68,8 +83,10 @@ function getProgressWidth(step: PublishStep): `${number}%` {
   switch (step) {
     case 1:
       return "33.333%";
+
     case 2:
       return "66.666%";
+
     case 3:
       return "100%";
   }
@@ -85,10 +102,17 @@ export default function PublishScreen() {
   const [step, setStep] = useState<PublishStep>(1);
 
   const [title, setTitle] = useState("");
+
   const [description, setDescription] = useState("");
+
   const [price, setPrice] = useState("");
 
   const [images, setImages] = useState<PublishImage[]>([]);
+
+  const [category, setCategory] = useState<ListingCategory | null>(null);
+
+  const [location, setLocation] =
+    useState<PublishLocationValue>(EMPTY_LOCATION);
 
   const [focusedField, setFocusedField] = useState<PublishFocusedField>(null);
 
@@ -101,6 +125,17 @@ export default function PublishScreen() {
   const canContinueBasicInfo = titleIsValid && descriptionIsValid;
 
   const hasRequiredImages = images.length > 0;
+
+  const hasRequiredCategory = category !== null;
+
+  const hasRequiredLocation = location.label.trim().length > 0;
+
+  const detailsProgressCount =
+    Number(hasRequiredImages) +
+    Number(hasRequiredCategory) +
+    Number(hasRequiredLocation);
+
+  const allDetailsReady = detailsProgressCount === 3;
 
   const scrollToTop = (animated = true) => {
     requestAnimationFrame(() => {
@@ -124,13 +159,17 @@ export default function PublishScreen() {
   };
 
   const handleTypeContinue = () => {
-    if (!canSelectType) return;
+    if (!canSelectType) {
+      return;
+    }
 
     goToStep(2);
   };
 
   const handleBasicInfoContinue = () => {
-    if (!canContinueBasicInfo) return;
+    if (!canContinueBasicInfo) {
+      return;
+    }
 
     goToStep(3);
   };
@@ -445,7 +484,8 @@ export default function PublishScreen() {
                 <Text style={styles.sectionTitle}>Completá los detalles</Text>
 
                 <Text style={styles.sectionDescription}>
-                  Agregá imágenes y después completaremos categoría y ubicación.
+                  Agregá imágenes, elegí una categoría y definí dónde se
+                  encuentra tu publicación.
                 </Text>
               </View>
 
@@ -494,6 +534,58 @@ export default function PublishScreen() {
                 </View>
               </View>
 
+              <View style={styles.detailDivider} />
+
+              <PublishCategorySelector
+                value={category}
+                onChange={setCategory}
+              />
+
+              <View style={styles.detailDivider} />
+
+              <PublishLocationField value={location} onChange={setLocation} />
+
+              <View style={styles.detailStatus}>
+                <View
+                  style={[
+                    styles.detailStatusIcon,
+                    allDetailsReady && styles.detailStatusIconReady,
+                  ]}
+                >
+                  <SymbolView
+                    name={
+                      allDetailsReady
+                        ? {
+                            ios: "checkmark",
+                            android: "check",
+                            web: "check",
+                          }
+                        : {
+                            ios: "list.bullet",
+                            android: "list",
+                            web: "list",
+                          }
+                    }
+                    size={19}
+                    tintColor={allDetailsReady ? SURFACE : MUTED}
+                  />
+                </View>
+
+                <View style={styles.detailStatusContent}>
+                  <Text style={styles.detailStatusTitle}>
+                    {allDetailsReady
+                      ? "Detalles completos"
+                      : `${detailsProgressCount} de 3 datos completados`}
+                  </Text>
+
+                  <Text style={styles.detailStatusDescription}>
+                    {allDetailsReady
+                      ? "Las imágenes, la categoría y la ubicación están listas."
+                      : "Completá imágenes, categoría y ubicación antes de publicar."}
+                  </Text>
+                </View>
+              </View>
+
               <View style={styles.actions}>
                 <Pressable
                   accessibilityRole="button"
@@ -518,39 +610,39 @@ export default function PublishScreen() {
 
                 <View
                   accessibilityRole="button"
-                  accessibilityLabel="Continuar con los detalles de la publicación"
+                  accessibilityLabel="Publicar en Eziel"
                   accessibilityState={{
                     disabled: true,
                   }}
                   style={[
                     styles.continueButton,
-                    !hasRequiredImages && styles.primaryButtonDisabled,
+                    !allDetailsReady && styles.primaryButtonDisabled,
                   ]}
                 >
                   <Text
                     style={[
                       styles.primaryButtonText,
-                      !hasRequiredImages && styles.primaryButtonTextDisabled,
+                      !allDetailsReady && styles.primaryButtonTextDisabled,
                     ]}
                   >
-                    Continuar
+                    Publicar
                   </Text>
 
                   <SymbolView
                     name={{
-                      ios: "arrow.right",
-                      android: "arrow_forward",
-                      web: "arrow_forward",
+                      ios: "arrow.up.circle.fill",
+                      android: "publish",
+                      web: "publish",
                     }}
                     size={19}
-                    tintColor={hasRequiredImages ? SURFACE : MUTED_LIGHT}
+                    tintColor={allDetailsReady ? SURFACE : MUTED_LIGHT}
                   />
                 </View>
               </View>
 
               <Text style={styles.pendingNotice}>
-                Categoría y ubicación se incorporarán en este mismo paso antes
-                de habilitar el guardado real.
+                El envío real se habilitará cuando conectemos autenticación,
+                Firebase Storage y Firestore en mobile.
               </Text>
             </>
           )}
@@ -817,6 +909,54 @@ const styles = StyleSheet.create({
   },
 
   imageStatusDescription: {
+    color: MUTED,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+
+  detailDivider: {
+    height: 1,
+    backgroundColor: BORDER,
+    marginVertical: 26,
+  },
+
+  detailStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 15,
+    marginTop: 20,
+    borderRadius: 18,
+    backgroundColor: SURFACE,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+
+  detailStatusIcon: {
+    width: 38,
+    height: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+  },
+
+  detailStatusIconReady: {
+    backgroundColor: ORANGE,
+  },
+
+  detailStatusContent: {
+    flex: 1,
+  },
+
+  detailStatusTitle: {
+    color: TEXT,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
+  detailStatusDescription: {
     color: MUTED,
     fontSize: 11,
     lineHeight: 16,

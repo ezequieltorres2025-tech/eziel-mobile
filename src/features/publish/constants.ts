@@ -10,3 +10,17 @@ export const ACCEPTED_LISTING_IMAGE_MIME_TYPES = [
   "image/png",
   "image/webp",
 ] as const;
+
+export const LISTING_CATEGORIES = [
+  "Electrónica",
+  "Ropa",
+  "Muebles",
+  "Deportes",
+  "Libros",
+  "Autos",
+  "Inmuebles",
+  "Servicios",
+  "Otros",
+] as const;
+
+export type ListingCategory = (typeof LISTING_CATEGORIES)[number];
