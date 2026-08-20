@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "996906177212",
+    "project_id": "marketplace-nqn",
+    "storage_bucket": "marketplace-nqn.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:996906177212:android:c98fa03f45c22fb2dcf6b9",
+        "android_client_info": {
+          "package_name": "com.eziel.marketplace"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "996906177212-qads84cl37uop647jnvl5qv6tkv8f5r9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eziel.marketplace",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "996906177212-ge06tuvigd609cetsldam8ikr7vcga1p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDlCmCkmY2IbGesg3jNgmVLRUAd6FERyo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "996906177212-ge06tuvigd609cetsldam8ikr7vcga1p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
