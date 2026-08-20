@@ -1,4 +1,5 @@
-import type { User } from "firebase/auth";
+import type { User } from "@react-native-firebase/auth";
+
 import {
     doc,
     getDoc,
@@ -6,7 +7,7 @@ import {
     Timestamp,
     updateDoc,
     type DocumentData,
-} from "firebase/firestore";
+} from "@react-native-firebase/firestore";
 
 import { db } from "@/lib/firebase";
 
