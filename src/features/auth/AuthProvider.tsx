@@ -23,12 +23,17 @@ import {
   useState,
 } from "react";
 
+import {
+  syncUserProfile,
+  type UserProfile,
+} from "@/features/auth/userProfileService";
 import { auth } from "@/lib/firebase";
 
 export type GoogleLoginResult = "success" | "cancelled";
 
 interface AuthContextValue {
   user: User | null;
+  userProfile: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   loginWithGoogle: () => Promise<GoogleLoginResult>;
@@ -54,24 +59,54 @@ function configureGoogleSignIn(): void {
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
 
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     configureGoogleSignIn();
 
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      (currentUser) => {
-        setUser(currentUser);
-        setIsLoading(false);
-      },
-      () => {
-        setUser(null);
-        setIsLoading(false);
-      },
-    );
+    let isMounted = true;
 
-    return unsubscribe;
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setUser(currentUser);
+      setIsLoading(true);
+
+      if (!currentUser) {
+        setUserProfile(null);
+        setIsLoading(false);
+        return;
+      }
+
+      const currentUid = currentUser.uid;
+
+      try {
+        const profile = await syncUserProfile(currentUser);
+
+        if (isMounted && auth.currentUser?.uid === currentUid) {
+          setUserProfile(profile);
+        }
+      } catch (error) {
+        console.error("Error sincronizando perfil:", error);
+
+        if (isMounted && auth.currentUser?.uid === currentUid) {
+          setUserProfile(null);
+        }
+      } finally {
+        if (isMounted && auth.currentUser?.uid === currentUid) {
+          setIsLoading(false);
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const loginWithGoogle = useCallback(async (): Promise<GoogleLoginResult> => {
@@ -129,12 +164,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
+      userProfile,
       isAuthenticated: user !== null,
       isLoading,
       loginWithGoogle,
       logout,
     }),
-    [user, isLoading, loginWithGoogle, logout],
+    [user, userProfile, isLoading, loginWithGoogle, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
