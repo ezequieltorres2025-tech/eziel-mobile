@@ -1,6 +1,8 @@
 import { SymbolView } from "expo-symbols";
 import { useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useAuth } from "../../features/auth/AuthProvider";
 import {
   PublishBasicInfoForm,
   type PublishFocusedField,
@@ -28,6 +31,7 @@ import {
 } from "../../features/publish/components/PublishLocationField";
 import { PublishTypeCard } from "../../features/publish/components/PublishTypeCard";
 import type { ListingCategory } from "../../features/publish/constants";
+import { publishProduct } from "../../features/publish/publishProductService";
 
 const ORANGE = "#F97316";
 const ORANGE_DARK = "#EA580C";
@@ -97,6 +101,8 @@ export default function PublishScreen() {
   const descriptionRef = useRef<TextInput>(null);
   const priceRef = useRef<TextInput>(null);
 
+  const { isAuthenticated, isLoading: isAuthLoading, userProfile } = useAuth();
+
   const [publishType, setPublishType] = useState<PublishType | null>(null);
 
   const [step, setStep] = useState<PublishStep>(1);
@@ -116,9 +122,15 @@ export default function PublishScreen() {
 
   const [focusedField, setFocusedField] = useState<PublishFocusedField>(null);
 
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   const titleIsValid = title.trim().length >= 3;
 
   const descriptionIsValid = description.trim().length >= 10;
+
+  const hasProductPrice = price.trim().length > 0;
 
   const canSelectType = publishType !== null;
 
@@ -136,6 +148,16 @@ export default function PublishScreen() {
     Number(hasRequiredLocation);
 
   const allDetailsReady = detailsProgressCount === 3;
+
+  const canPublishProduct =
+    publishType === "product" &&
+    allDetailsReady &&
+    hasProductPrice &&
+    !isPublishing;
+
+  const uploadProgressPercent = Math.round(uploadProgress * 100);
+
+  const uploadProgressWidth = `${uploadProgressPercent}%` as `${number}%`;
 
   const scrollToTop = (animated = true) => {
     requestAnimationFrame(() => {
@@ -175,6 +197,10 @@ export default function PublishScreen() {
   };
 
   const handleBack = () => {
+    if (isPublishing) {
+      return;
+    }
+
     if (step === 3) {
       goToStep(2);
       return;
@@ -184,6 +210,10 @@ export default function PublishScreen() {
   };
 
   const handleChangeType = () => {
+    if (isPublishing) {
+      return;
+    }
+
     goToStep(1);
   };
 
@@ -191,6 +221,108 @@ export default function PublishScreen() {
     const normalizedValue = value.replace(/[^\d]/g, "");
 
     setPrice(normalizedValue);
+  };
+
+  const resetForm = () => {
+    clearKeyboardState();
+    setPublishType(null);
+    setStep(1);
+    setTitle("");
+    setDescription("");
+    setPrice("");
+    setImages([]);
+    setCategory(null);
+    setLocation({ ...EMPTY_LOCATION });
+    setUploadProgress(0);
+    scrollToTop(false);
+  };
+
+  const handlePublish = async () => {
+    if (isPublishing || publishType !== "product" || !allDetailsReady) {
+      return;
+    }
+
+    if (!hasProductPrice) {
+      Alert.alert(
+        "Precio requerido",
+        "Ingresá un precio para publicar el producto.",
+      );
+      return;
+    }
+
+    if (isAuthLoading) {
+      Alert.alert(
+        "Verificando sesión",
+        "Esperá un momento mientras verificamos tu cuenta.",
+      );
+      return;
+    }
+
+    if (!isAuthenticated) {
+      Alert.alert(
+        "Iniciá sesión",
+        "Debes iniciar sesión con Google para publicar en Eziel.",
+      );
+      return;
+    }
+
+    if (!category) {
+      return;
+    }
+
+    const numericPrice = Number(price);
+
+    if (!Number.isFinite(numericPrice) || numericPrice < 0) {
+      Alert.alert(
+        "Precio inválido",
+        "Ingresá un precio válido para continuar.",
+      );
+      return;
+    }
+
+    const selectedImages = [...images];
+    const selectedCategory = category;
+    const selectedLocation = location.label.trim();
+
+    setIsPublishing(true);
+    setUploadProgress(0);
+
+    try {
+      await publishProduct(
+        {
+          title: title.trim(),
+          description: description.trim(),
+          price: numericPrice,
+          category: selectedCategory,
+          location: selectedLocation,
+          images: selectedImages,
+        },
+        {
+          userProfile,
+          onUploadProgress: ({ overallProgress }) => {
+            setUploadProgress(overallProgress);
+          },
+        },
+      );
+
+      setUploadProgress(1);
+
+      resetForm();
+
+      Alert.alert(
+        "Publicación creada",
+        "Tu producto ya está publicado en Eziel.",
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : "No pudimos crear la publicación. Intentá nuevamente.";
+
+      Alert.alert("No se pudo publicar", message);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const selectedIcon = publishType === "service" ? SERVICE_ICON : PRODUCT_ICON;
@@ -389,10 +521,15 @@ export default function PublishScreen() {
               <View style={styles.actions}>
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityState={{
+                    disabled: isPublishing,
+                  }}
+                  disabled={isPublishing}
                   onPress={handleBack}
                   style={({ pressed }) => [
                     styles.secondaryButton,
-                    pressed && styles.pressed,
+                    isPublishing && styles.secondaryButtonDisabled,
+                    pressed && !isPublishing && styles.pressed,
                   ]}
                 >
                   <SymbolView
@@ -589,10 +726,15 @@ export default function PublishScreen() {
               <View style={styles.actions}>
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityState={{
+                    disabled: isPublishing,
+                  }}
+                  disabled={isPublishing}
                   onPress={handleBack}
                   style={({ pressed }) => [
                     styles.secondaryButton,
-                    pressed && styles.pressed,
+                    isPublishing && styles.secondaryButtonDisabled,
+                    pressed && !isPublishing && styles.pressed,
                   ]}
                 >
                   <SymbolView
@@ -608,42 +750,122 @@ export default function PublishScreen() {
                   <Text style={styles.secondaryButtonText}>Atrás</Text>
                 </Pressable>
 
-                <View
+                <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Publicar en Eziel"
                   accessibilityState={{
-                    disabled: true,
+                    disabled:
+                      publishType !== "product" ||
+                      !allDetailsReady ||
+                      !hasProductPrice ||
+                      isPublishing,
+                    busy: isPublishing,
                   }}
-                  style={[
+                  disabled={
+                    publishType !== "product" ||
+                    !allDetailsReady ||
+                    !hasProductPrice ||
+                    isPublishing
+                  }
+                  onPress={handlePublish}
+                  style={({ pressed }) => [
                     styles.continueButton,
-                    !allDetailsReady && styles.primaryButtonDisabled,
+                    !canPublishProduct && styles.primaryButtonDisabled,
+                    pressed && canPublishProduct && styles.primaryButtonPressed,
                   ]}
                 >
+                  {isPublishing ? (
+                    <ActivityIndicator size="small" color={SURFACE} />
+                  ) : (
+                    <SymbolView
+                      name={{
+                        ios: "arrow.up.circle.fill",
+                        android: "publish",
+                        web: "publish",
+                      }}
+                      size={19}
+                      tintColor={canPublishProduct ? SURFACE : MUTED_LIGHT}
+                    />
+                  )}
+
                   <Text
                     style={[
                       styles.primaryButtonText,
-                      !allDetailsReady && styles.primaryButtonTextDisabled,
+                      !canPublishProduct && styles.primaryButtonTextDisabled,
                     ]}
                   >
-                    Publicar
+                    {isPublishing ? "Publicando..." : "Publicar"}
                   </Text>
-
-                  <SymbolView
-                    name={{
-                      ios: "arrow.up.circle.fill",
-                      android: "publish",
-                      web: "publish",
-                    }}
-                    size={19}
-                    tintColor={allDetailsReady ? SURFACE : MUTED_LIGHT}
-                  />
-                </View>
+                </Pressable>
               </View>
 
-              <Text style={styles.pendingNotice}>
-                El envío real se habilitará cuando conectemos autenticación,
-                Firebase Storage y Firestore en mobile.
-              </Text>
+              {isPublishing && (
+                <View
+                  style={styles.publishingCard}
+                  accessibilityRole="progressbar"
+                  accessibilityValue={{
+                    min: 0,
+                    max: 100,
+                    now: uploadProgressPercent,
+                    text: `${uploadProgressPercent}%`,
+                  }}
+                >
+                  <View style={styles.publishingHeader}>
+                    <Text style={styles.publishingTitle}>
+                      {uploadProgress < 1
+                        ? "Subiendo imágenes"
+                        : "Guardando publicación"}
+                    </Text>
+
+                    <Text style={styles.publishingPercent}>
+                      {uploadProgressPercent}%
+                    </Text>
+                  </View>
+
+                  <View style={styles.publishingProgressTrack}>
+                    <View
+                      style={[
+                        styles.publishingProgressFill,
+                        {
+                          width: uploadProgressWidth,
+                        },
+                      ]}
+                    />
+                  </View>
+
+                  <Text style={styles.publishingDescription}>
+                    No cierres Eziel hasta que termine la publicación.
+                  </Text>
+                </View>
+              )}
+
+              {!isPublishing && publishType === "service" && (
+                <Text style={styles.pendingNotice}>
+                  Los servicios usan un flujo profesional separado y no se
+                  publican como productos.
+                </Text>
+              )}
+
+              {!isPublishing &&
+                publishType === "product" &&
+                allDetailsReady &&
+                !hasProductPrice && (
+                  <Text style={styles.pendingNotice}>
+                    Volvé a Información e ingresá un precio para publicar el
+                    producto.
+                  </Text>
+                )}
+
+              {!isPublishing &&
+                publishType === "product" &&
+                hasProductPrice &&
+                allDetailsReady &&
+                !isAuthenticated && (
+                  <Text style={styles.pendingNotice}>
+                    Al publicar te pediremos iniciar sesión si todavía no estás
+                    conectado.
+                  </Text>
+                )}
             </>
           )}
         </ScrollView>
@@ -997,6 +1219,59 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 18,
     backgroundColor: ORANGE,
+  },
+
+  secondaryButtonDisabled: {
+    opacity: 0.5,
+  },
+
+  publishingCard: {
+    padding: 15,
+    marginTop: 14,
+    borderRadius: 18,
+    backgroundColor: SURFACE,
+    borderWidth: 1,
+    borderColor: ORANGE_BORDER,
+  },
+
+  publishingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 10,
+  },
+
+  publishingTitle: {
+    color: TEXT,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
+  publishingPercent: {
+    color: ORANGE_DARK,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+
+  publishingProgressTrack: {
+    height: 6,
+    overflow: "hidden",
+    borderRadius: 999,
+    backgroundColor: DISABLED,
+  },
+
+  publishingProgressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: ORANGE,
+  },
+
+  publishingDescription: {
+    color: MUTED,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 9,
   },
 
   pendingNotice: {
