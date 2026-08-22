@@ -31,6 +31,7 @@ import {
 } from "../../features/publish/components/PublishLocationField";
 import { PublishTypeCard } from "../../features/publish/components/PublishTypeCard";
 import type { ListingCategory } from "../../features/publish/constants";
+import { PublishServiceFlow } from "../../features/publish-service/components/PublishServiceFlow";
 import { publishProduct } from "../../features/publish/publishProductService";
 
 const ORANGE = "#F97316";
@@ -101,7 +102,12 @@ export default function PublishScreen() {
   const descriptionRef = useRef<TextInput>(null);
   const priceRef = useRef<TextInput>(null);
 
-  const { isAuthenticated, isLoading: isAuthLoading, userProfile } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading: isAuthLoading,
+    userProfile,
+    loginWithGoogle,
+  } = useAuth();
 
   const [publishType, setPublishType] = useState<PublishType | null>(null);
 
@@ -356,7 +362,11 @@ export default function PublishScreen() {
           </View>
 
           <View
-            style={styles.progress}
+            style={
+              publishType === "service" && step === 2
+                ? styles.hidden
+                : styles.progress
+            }
             accessibilityRole="progressbar"
             accessibilityValue={{
               min: 1,
@@ -382,6 +392,49 @@ export default function PublishScreen() {
               />
             </View>
           </View>
+
+          {publishType === "service" && step === 2 && (
+            <PublishServiceFlow
+              isAuthenticated={isAuthenticated}
+              userProfile={userProfile}
+              onExit={handleChangeType}
+              onStepChange={() => {
+                clearKeyboardState();
+                scrollToTop();
+              }}
+              onPublished={() => {
+                clearKeyboardState();
+                scrollToTop();
+              }}
+              onRequestSignIn={async () => {
+                if (isAuthLoading) {
+                  Alert.alert(
+                    "Verificando sesión",
+                    "Esperá un momento mientras verificamos tu cuenta.",
+                  );
+                  return;
+                }
+
+                try {
+                  const result = await loginWithGoogle();
+
+                  if (result === "cancelled") {
+                    return;
+                  }
+                } catch (error) {
+                  const message =
+                    error instanceof Error && error.message.trim()
+                      ? error.message
+                      : "No pudimos iniciar sesión con Google. Intentá nuevamente.";
+
+                  Alert.alert(
+                    "No se pudo iniciar sesión",
+                    message,
+                  );
+                }
+              }}
+            />
+          )}
 
           {step === 1 && (
             <>
@@ -471,7 +524,7 @@ export default function PublishScreen() {
             </>
           )}
 
-          {step === 2 && (
+          {step === 2 && publishType === "product" && (
             <>
               <View style={styles.selectedType}>
                 <View style={styles.selectedTypeIcon}>
@@ -875,6 +928,10 @@ export default function PublishScreen() {
 }
 
 const styles = StyleSheet.create({
+  hidden: {
+    display: "none",
+  },
+
   safeArea: {
     flex: 1,
     backgroundColor: BACKGROUND,
