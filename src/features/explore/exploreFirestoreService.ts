@@ -366,6 +366,8 @@ function mapService(
       data.priceType,
     ),
     price: Number(data.price ?? 0),
+    whatsapp: String(data.whatsapp ?? "").trim(),
+    phone: String(data.phone ?? "").trim(),
     imageUrl: imageUrls[0] || "",
     imageUrls,
     experienceYears: Number(
@@ -496,6 +498,36 @@ export async function getExploreServices(): Promise<ExploreService[]> {
   return sortServicesByProfessionalRanking(
     services,
   );
+}
+
+export async function getExploreServiceById(
+  serviceId: string,
+): Promise<ExploreService | null> {
+  const normalizedServiceId =
+    String(serviceId ?? "").trim();
+
+  if (!normalizedServiceId) {
+    return null;
+  }
+
+  const snapshot = await getDoc(
+    doc(db, "services", normalizedServiceId),
+  );
+
+  if (!snapshot.exists()) {
+    return null;
+  }
+
+  const service = mapService(
+    snapshot.id,
+    snapshot.data() as FirestoreData,
+  );
+
+  if (!isServicePublicationAvailable(service)) {
+    return null;
+  }
+
+  return service;
 }
 
 // ============================================================

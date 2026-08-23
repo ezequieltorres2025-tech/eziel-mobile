@@ -59,6 +59,8 @@ export interface ExploreService {
   zones: string[];
   priceType: ServicePriceType;
   price: number;
+  whatsapp: string;
+  phone: string;
   imageUrl: string;
   imageUrls: string[];
   experienceYears: number;

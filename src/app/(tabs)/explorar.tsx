@@ -757,8 +757,25 @@ function ServiceResultCard({
 }: {
   service: ExploreService;
 }) {
+  const router = useRouter();
+
   return (
-    <View style={styles.resultCard}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Abrir servicio ${service.title}`}
+      onPress={() =>
+        router.push({
+          pathname: "/servicios/[id]",
+          params: {
+            id: service.id,
+          },
+        })
+      }
+      style={({ pressed }) => [
+        styles.resultCard,
+        pressed && styles.resultCardPressed,
+      ]}
+    >
       <ResultImage
         imageUrl={service.imageUrl}
         kind="service"
@@ -806,7 +823,19 @@ function ServiceResultCard({
             .join(", ")}
         </Text>
       </View>
-    </View>
+
+      <View style={styles.resultCardChevron}>
+        <SymbolView
+          name={{
+            ios: "chevron.right",
+            android: "chevron_right",
+            web: "chevron_right",
+          }}
+          size={18}
+          tintColor={MUTED_LIGHT}
+        />
+      </View>
+    </Pressable>
   );
 }
 
