@@ -16,6 +16,10 @@ import type {
 } from "@/features/explore/exploreTypes";
 
 import {
+  ListingReviewCard,
+} from "@/features/listing-review/ListingReviewCard";
+
+import {
   useListingSale,
 } from "./useListingSale";
 
@@ -342,6 +346,11 @@ export function ListingSaleCard({
             text={error}
           />
         ) : null}
+
+        <ListingReviewCard
+          listing={listing}
+          sale={sale}
+        />
       </View>
     );
   }
