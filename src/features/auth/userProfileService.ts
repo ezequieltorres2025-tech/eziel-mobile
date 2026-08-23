@@ -1,12 +1,15 @@
-import type { User } from "@react-native-firebase/auth";
+import {
+  updateProfile as updateFirebaseAuthProfile,
+  type User,
+} from "@react-native-firebase/auth";
 
 import {
-    doc,
-    getDoc,
-    setDoc,
-    Timestamp,
-    updateDoc,
-    type DocumentData,
+  doc,
+  getDoc,
+  setDoc,
+  Timestamp,
+  updateDoc,
+  type DocumentData,
 } from "@react-native-firebase/firestore";
 
 import { db } from "@/lib/firebase";
@@ -16,12 +19,21 @@ export interface UserProfile extends DocumentData {
   displayName: string | null;
   email: string | null;
   photoURL: string | null;
+  photoPath?: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   role: "user" | "seller" | "admin";
   verified: boolean;
   bio?: string;
   location?: string;
+}
+
+export interface UserProfileUpdates {
+  displayName: string;
+  photoURL: string | null;
+  photoPath: string | null;
+  bio: string;
+  location: string;
 }
 
 function normalizeText(value: unknown, fallback = ""): string {
@@ -36,18 +48,29 @@ function normalizeOptionalText(value: unknown): string | undefined {
   return normalizedValue || undefined;
 }
 
-function normalizeUserProfile(uid: string, data: DocumentData): UserProfile {
+function normalizeUserProfile(
+  uid: string,
+  data: DocumentData,
+): UserProfile {
   return {
     ...data,
     uid: normalizeText(data.uid, uid),
     displayName: normalizeText(data.displayName, "Usuario"),
     email: normalizeText(data.email),
     photoURL: normalizeOptionalText(data.photoURL) ?? null,
+    photoPath: normalizeOptionalText(data.photoPath) ?? null,
     createdAt:
-      data.createdAt instanceof Timestamp ? data.createdAt : Timestamp.now(),
+      data.createdAt instanceof Timestamp
+        ? data.createdAt
+        : Timestamp.now(),
     updatedAt:
-      data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
-    role: data.role === "seller" || data.role === "admin" ? data.role : "user",
+      data.updatedAt instanceof Timestamp
+        ? data.updatedAt
+        : Timestamp.now(),
+    role:
+      data.role === "seller" || data.role === "admin"
+        ? data.role
+        : "user",
     verified: data.verified === true,
     bio: normalizeOptionalText(data.bio),
     location: normalizeOptionalText(data.location),
@@ -57,7 +80,11 @@ function normalizeUserProfile(uid: string, data: DocumentData): UserProfile {
 export async function saveOrUpdateUserProfile(
   firebaseUser: User,
 ): Promise<UserProfile> {
-  const userRef = doc(db, "users", firebaseUser.uid);
+  const userRef = doc(
+    db,
+    "users",
+    firebaseUser.uid,
+  );
 
   const userSnapshot = await getDoc(userRef);
 
@@ -65,26 +92,43 @@ export async function saveOrUpdateUserProfile(
 
   if (userSnapshot.exists()) {
     await updateDoc(userRef, {
-      displayName: normalizeText(firebaseUser.displayName, "Usuario"),
+      displayName: normalizeText(
+        firebaseUser.displayName,
+        "Usuario",
+      ),
       email: normalizeText(firebaseUser.email),
-      photoURL: normalizeOptionalText(firebaseUser.photoURL) ?? null,
+      photoURL:
+        normalizeOptionalText(
+          firebaseUser.photoURL,
+        ) ?? null,
       updatedAt: now,
     });
 
     const updatedSnapshot = await getDoc(userRef);
 
     if (!updatedSnapshot.exists()) {
-      throw new Error("El perfil actualizado no pudo recuperarse.");
+      throw new Error(
+        "El perfil actualizado no pudo recuperarse.",
+      );
     }
 
-    return normalizeUserProfile(firebaseUser.uid, updatedSnapshot.data());
+    return normalizeUserProfile(
+      firebaseUser.uid,
+      updatedSnapshot.data(),
+    );
   }
 
   const userProfile: UserProfile = {
     uid: firebaseUser.uid,
-    displayName: normalizeText(firebaseUser.displayName, "Usuario"),
+    displayName: normalizeText(
+      firebaseUser.displayName,
+      "Usuario",
+    ),
     email: normalizeText(firebaseUser.email),
-    photoURL: normalizeOptionalText(firebaseUser.photoURL) ?? null,
+    photoURL:
+      normalizeOptionalText(
+        firebaseUser.photoURL,
+      ) ?? null,
     createdAt: now,
     updatedAt: now,
     role: "user",
@@ -94,6 +138,124 @@ export async function saveOrUpdateUserProfile(
   await setDoc(userRef, userProfile);
 
   return userProfile;
+}
+
+export async function updateCurrentUserProfile(
+  firebaseUser: User,
+  updates: UserProfileUpdates,
+): Promise<UserProfile> {
+  const displayName = normalizeText(
+    updates.displayName,
+  );
+
+  if (!displayName) {
+    throw new Error(
+      "El nombre visible es obligatorio.",
+    );
+  }
+
+  const photoURL =
+    normalizeOptionalText(
+      updates.photoURL,
+    ) ?? null;
+
+  const photoPath =
+    normalizeOptionalText(
+      updates.photoPath,
+    ) ?? null;
+
+  const bio =
+    normalizeOptionalText(
+      updates.bio,
+    ) ?? "";
+
+  const location =
+    normalizeOptionalText(
+      updates.location,
+    ) ?? "";
+
+  const userRef = doc(
+    db,
+    "users",
+    firebaseUser.uid,
+  );
+
+  const existingSnapshot = await getDoc(userRef);
+
+  const previousDisplayName =
+    firebaseUser.displayName;
+
+  const previousPhotoURL =
+    firebaseUser.photoURL;
+
+  await updateFirebaseAuthProfile(
+    firebaseUser,
+    {
+      displayName,
+      photoURL,
+    },
+  );
+
+  try {
+    const now = Timestamp.now();
+
+    if (existingSnapshot.exists()) {
+      await updateDoc(userRef, {
+        displayName,
+        photoURL,
+        photoPath,
+        bio,
+        location,
+        updatedAt: now,
+      });
+    } else {
+      await setDoc(userRef, {
+        uid: firebaseUser.uid,
+        displayName,
+        email: normalizeText(
+          firebaseUser.email,
+        ),
+        photoURL,
+        photoPath,
+        bio,
+        location,
+        createdAt: now,
+        updatedAt: now,
+        role: "user",
+        verified: false,
+      });
+    }
+  } catch (error) {
+    try {
+      await updateFirebaseAuthProfile(
+        firebaseUser,
+        {
+          displayName: previousDisplayName,
+          photoURL: previousPhotoURL,
+        },
+      );
+    } catch (rollbackError) {
+      console.error(
+        "No se pudo revertir Firebase Auth después de fallar Firestore:",
+        rollbackError,
+      );
+    }
+
+    throw error;
+  }
+
+  const updatedSnapshot = await getDoc(userRef);
+
+  if (!updatedSnapshot.exists()) {
+    throw new Error(
+      "El perfil actualizado no pudo recuperarse.",
+    );
+  }
+
+  return normalizeUserProfile(
+    firebaseUser.uid,
+    updatedSnapshot.data(),
+  );
 }
 
 export async function syncUserProfile(

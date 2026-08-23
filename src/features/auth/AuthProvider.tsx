@@ -25,11 +25,15 @@ import {
 
 import {
   syncUserProfile,
+  updateCurrentUserProfile,
   type UserProfile,
+  type UserProfileUpdates,
 } from "@/features/auth/userProfileService";
 import { auth } from "@/lib/firebase";
 
-export type GoogleLoginResult = "success" | "cancelled";
+export type GoogleLoginResult =
+  | "success"
+  | "cancelled";
 
 interface AuthContextValue {
   user: User | null;
@@ -38,9 +42,15 @@ interface AuthContextValue {
   isLoading: boolean;
   loginWithGoogle: () => Promise<GoogleLoginResult>;
   logout: () => Promise<void>;
+  saveUserProfile: (
+    updates: UserProfileUpdates,
+  ) => Promise<UserProfile>;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthContext =
+  createContext<AuthContextValue | null>(
+    null,
+  );
 
 let isGoogleSignInConfigured = false;
 
@@ -56,52 +66,80 @@ function configureGoogleSignIn(): void {
   isGoogleSignInConfigured = true;
 }
 
-export function AuthProvider({ children }: PropsWithChildren) {
-  const [user, setUser] = useState<User | null>(null);
+export function AuthProvider({
+  children,
+}: PropsWithChildren) {
+  const [user, setUser] =
+    useState<User | null>(null);
 
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] =
+    useState<UserProfile | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] =
+    useState(true);
 
   useEffect(() => {
     configureGoogleSignIn();
 
     let isMounted = true;
 
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (!isMounted) {
-        return;
-      }
+    const unsubscribe =
+      onAuthStateChanged(
+        auth,
+        async (currentUser) => {
+          if (!isMounted) {
+            return;
+          }
 
-      setUser(currentUser);
-      setIsLoading(true);
+          setUser(currentUser);
+          setIsLoading(true);
 
-      if (!currentUser) {
-        setUserProfile(null);
-        setIsLoading(false);
-        return;
-      }
+          if (!currentUser) {
+            setUserProfile(null);
+            setIsLoading(false);
+            return;
+          }
 
-      const currentUid = currentUser.uid;
+          const currentUid =
+            currentUser.uid;
 
-      try {
-        const profile = await syncUserProfile(currentUser);
+          try {
+            const profile =
+              await syncUserProfile(
+                currentUser,
+              );
 
-        if (isMounted && auth.currentUser?.uid === currentUid) {
-          setUserProfile(profile);
-        }
-      } catch (error) {
-        console.error("Error sincronizando perfil:", error);
+            if (
+              isMounted &&
+              auth.currentUser?.uid ===
+                currentUid
+            ) {
+              setUserProfile(profile);
+            }
+          } catch (error) {
+            console.error(
+              "Error sincronizando perfil:",
+              error,
+            );
 
-        if (isMounted && auth.currentUser?.uid === currentUid) {
-          setUserProfile(null);
-        }
-      } finally {
-        if (isMounted && auth.currentUser?.uid === currentUid) {
-          setIsLoading(false);
-        }
-      }
-    });
+            if (
+              isMounted &&
+              auth.currentUser?.uid ===
+                currentUid
+            ) {
+              setUserProfile(null);
+            }
+          } finally {
+            if (
+              isMounted &&
+              auth.currentUser?.uid ===
+                currentUid
+            ) {
+              setIsLoading(false);
+            }
+          }
+        },
+      );
 
     return () => {
       isMounted = false;
@@ -109,78 +147,167 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  const loginWithGoogle = useCallback(async (): Promise<GoogleLoginResult> => {
-    configureGoogleSignIn();
+  const loginWithGoogle =
+    useCallback(
+      async (): Promise<GoogleLoginResult> => {
+        configureGoogleSignIn();
 
-    await GoogleOneTapSignIn.checkPlayServices();
+        await GoogleOneTapSignIn.checkPlayServices();
 
-    let response = await GoogleOneTapSignIn.signIn();
+        let response =
+          await GoogleOneTapSignIn.signIn();
 
-    if (isNoSavedCredentialFoundResponse(response)) {
-      response = await GoogleOneTapSignIn.createAccount();
-    }
+        if (
+          isNoSavedCredentialFoundResponse(
+            response,
+          )
+        ) {
+          response =
+            await GoogleOneTapSignIn.createAccount();
+        }
 
-    if (isNoSavedCredentialFoundResponse(response)) {
-      response = await GoogleOneTapSignIn.presentExplicitSignIn();
-    }
+        if (
+          isNoSavedCredentialFoundResponse(
+            response,
+          )
+        ) {
+          response =
+            await GoogleOneTapSignIn.presentExplicitSignIn();
+        }
 
-    if (isCancelledResponse(response)) {
-      return "cancelled";
-    }
+        if (
+          isCancelledResponse(response)
+        ) {
+          return "cancelled";
+        }
 
-    if (!isSuccessResponse(response)) {
-      throw new Error("Google Sign-In no pudo completar la autenticación.");
-    }
+        if (
+          !isSuccessResponse(response)
+        ) {
+          throw new Error(
+            "Google Sign-In no pudo completar la autenticación.",
+          );
+        }
 
-    const idToken = response.data.idToken;
+        const idToken =
+          response.data.idToken;
 
-    if (!idToken) {
-      throw new Error("Google no devolvió un ID token válido.");
-    }
+        if (!idToken) {
+          throw new Error(
+            "Google no devolvió un ID token válido.",
+          );
+        }
 
-    const credential = GoogleAuthProvider.credential(idToken);
+        const credential =
+          GoogleAuthProvider.credential(
+            idToken,
+          );
 
-    await signInWithCredential(auth, credential);
+        await signInWithCredential(
+          auth,
+          credential,
+        );
 
-    return "success";
-  }, []);
+        return "success";
+      },
+      [],
+    );
 
-  const logout = useCallback(async (): Promise<void> => {
-    const [googleSignOutResult, firebaseSignOutResult] =
-      await Promise.allSettled([
-        GoogleOneTapSignIn.signOut(),
-        firebaseSignOut(auth),
-      ]);
+  const logout =
+    useCallback(
+      async (): Promise<void> => {
+        const [
+          googleSignOutResult,
+          firebaseSignOutResult,
+        ] =
+          await Promise.allSettled([
+            GoogleOneTapSignIn.signOut(),
+            firebaseSignOut(auth),
+          ]);
 
-    if (firebaseSignOutResult.status === "rejected") {
-      throw firebaseSignOutResult.reason;
-    }
+        if (
+          firebaseSignOutResult.status ===
+          "rejected"
+        ) {
+          throw firebaseSignOutResult.reason;
+        }
 
-    if (googleSignOutResult.status === "rejected") {
-      throw googleSignOutResult.reason;
-    }
-  }, []);
+        if (
+          googleSignOutResult.status ===
+          "rejected"
+        ) {
+          throw googleSignOutResult.reason;
+        }
+      },
+      [],
+    );
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      userProfile,
-      isAuthenticated: user !== null,
-      isLoading,
-      loginWithGoogle,
-      logout,
-    }),
-    [user, userProfile, isLoading, loginWithGoogle, logout],
+  const saveUserProfile =
+    useCallback(
+      async (
+        updates: UserProfileUpdates,
+      ): Promise<UserProfile> => {
+        const currentUser =
+          auth.currentUser;
+
+        if (!currentUser) {
+          throw new Error(
+            "Tenés que iniciar sesión para editar tu perfil.",
+          );
+        }
+
+        const profile =
+          await updateCurrentUserProfile(
+            currentUser,
+            updates,
+          );
+
+        setUserProfile(profile);
+
+        return profile;
+      },
+      [],
+    );
+
+  const value =
+    useMemo<AuthContextValue>(
+      () => ({
+        user,
+        userProfile,
+        isAuthenticated:
+          user !== null,
+        isLoading,
+        loginWithGoogle,
+        logout,
+        saveUserProfile,
+      }),
+      [
+        user,
+        userProfile,
+        isLoading,
+        loginWithGoogle,
+        logout,
+        saveUserProfile,
+      ],
+    );
+
+  return (
+    <AuthContext.Provider
+      value={value}
+    >
+      {children}
+    </AuthContext.Provider>
   );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
+  const context =
+    useContext(AuthContext);
 
   if (!context) {
-    throw new Error("useAuth must be used within AuthProvider.");
+    throw new Error(
+      "useAuth must be used within AuthProvider.",
+    );
   }
 
   return context;
