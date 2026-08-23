@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useListingDetail } from "@/features/listing-detail/useListingDetail";
 import { ListingFavoriteButton } from "@/features/favorites/ListingFavoriteButton";
+import { ContactSellerButton } from "@/features/chat/ContactSellerButton";
 
 import type {
   ExploreListing,
@@ -778,6 +779,11 @@ function SellerCard({
           )}
         </View>
       </View>
+
+      <ContactSellerButton
+        listing={listing}
+        sellerName={sellerName}
+      />
     </View>
   );
 }
