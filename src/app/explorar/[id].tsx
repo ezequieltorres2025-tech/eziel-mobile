@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useListingDetail } from "@/features/listing-detail/useListingDetail";
+import { ListingFavoriteButton } from "@/features/favorites/ListingFavoriteButton";
 
 import type {
   ExploreListing,
@@ -242,6 +243,10 @@ export default function ListingDetailScreen() {
         <ListingGallery listing={listing} />
 
         <ListingMainInfo listing={listing} />
+
+        <ListingFavoriteButton
+          listingId={listing.id}
+        />
 
         <ListingStock listing={listing} />
 
