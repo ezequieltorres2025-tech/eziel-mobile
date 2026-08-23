@@ -844,81 +844,116 @@ function StoreResultCard({
 }: {
   store: ExploreStore;
 }) {
-  const planLabel = getStorePlanLabel(store);
+  const router = useRouter();
 
   return (
-    <View style={styles.resultCard}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Abrir tienda ${store.name}`}
+      onPress={() =>
+        router.push({
+          pathname: "/tienda/[id]",
+          params: {
+            id: store.id,
+          },
+        })
+      }
+      style={({ pressed }) => [
+        styles.resultCard,
+        pressed &&
+          styles.resultCardPressed,
+      ]}
+    >
       <ResultImage
-        imageUrl={store.logoUrl}
+        imageUrl={
+          store.logoUrl ||
+          store.bannerUrl
+        }
         kind="store"
-        accessibilityLabel={`Logo de ${store.name}`}
+        accessibilityLabel={`Imagen de ${store.name}`}
       />
 
-      <View style={styles.resultCardContent}>
-        <View style={styles.resultTopRow}>
+      <View
+        style={
+          styles.resultCardContent
+        }
+      >
+        <View
+          style={
+            styles.resultTopRow
+          }
+        >
           <Text
             numberOfLines={1}
-            style={styles.resultCategory}
+            style={
+              styles.resultCategory
+            }
           >
             {store.category}
           </Text>
 
-          {planLabel && (
-            <View style={styles.planBadge}>
-              <Text style={styles.planBadgeText}>
-                {planLabel}
+          {store.verified && (
+            <View
+              style={
+                styles.verifiedBadge
+              }
+            >
+              <Text
+                style={
+                  styles.verifiedBadgeText
+                }
+              >
+                Verificada
               </Text>
             </View>
           )}
         </View>
 
-        <View style={styles.storeNameRow}>
-          <Text
-            numberOfLines={2}
-            style={[
-              styles.resultTitle,
-              styles.storeName,
-            ]}
-          >
-            {store.name}
-          </Text>
-
-          {store.verified && (
-            <Text
-              accessibilityLabel="Tienda verificada"
-              style={styles.verifiedMark}
-            >
-              ✓
-            </Text>
-          )}
-        </View>
-
         <Text
           numberOfLines={2}
-          style={styles.storeDescription}
+          style={
+            styles.resultTitle
+          }
         >
-          {store.description ||
-            "Comercio local en Eziel."}
+          {store.name}
         </Text>
 
         <Text
           numberOfLines={1}
-          style={styles.resultMeta}
+          style={
+            styles.resultMeta
+          }
         >
           {[store.city, store.province]
             .filter(Boolean)
             .join(", ")}
         </Text>
       </View>
-    </View>
+
+      <View
+        style={
+          styles.resultCardChevron
+        }
+      >
+        <SymbolView
+          name={{
+            ios: "chevron.right",
+            android: "chevron_right",
+            web: "chevron_right",
+          }}
+          size={18}
+          tintColor={
+            MUTED_LIGHT
+          }
+        />
+      </View>
+    </Pressable>
   );
 }
-
 type ResultImageKind =
   | "product"
   | "service"
   | "store";
-
 function ResultImage({
   imageUrl,
   kind,
