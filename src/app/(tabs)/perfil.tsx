@@ -1,4 +1,5 @@
 import { SymbolView } from "expo-symbols";
+import { router } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -195,6 +196,48 @@ export default function ProfileScreen() {
                     tintColor={ORANGE}
                   />
                 </View>
+
+                <View style={styles.divider} />
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Abrir mis favoritos"
+                  onPress={() => router.push("../favoritos")}
+                  style={({ pressed }) => [
+                    styles.menuItem,
+                    pressed && styles.menuItemPressed,
+                  ]}
+                >
+                  <View style={styles.menuIcon}>
+                    <SymbolView
+                      name={{
+                        ios: "heart.fill",
+                        android: "favorite",
+                        web: "favorite",
+                      }}
+                      size={20}
+                      tintColor={ORANGE}
+                    />
+                  </View>
+
+                  <View style={styles.menuContent}>
+                    <Text style={styles.menuTitle}>Mis favoritos</Text>
+
+                    <Text style={styles.menuDescription}>
+                      Revisá las publicaciones que guardaste.
+                    </Text>
+                  </View>
+
+                  <SymbolView
+                    name={{
+                      ios: "chevron.right",
+                      android: "navigate_next",
+                      web: "chevron_right",
+                    }}
+                    size={20}
+                    tintColor={MUTED}
+                  />
+                </Pressable>
 
                 <View style={styles.divider} />
 
@@ -731,6 +774,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 13,
     paddingVertical: 14,
+  },
+
+  menuItemPressed: {
+    opacity: 0.65,
   },
 
   menuIcon: {

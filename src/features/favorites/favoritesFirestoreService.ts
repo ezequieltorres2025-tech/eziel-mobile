@@ -1,7 +1,9 @@
 import {
+  collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   serverTimestamp,
   setDoc,
@@ -65,6 +67,27 @@ function getFavoriteRef(
   };
 }
 
+function getFavoritesCollectionRef(
+  userId: string,
+) {
+  const normalizedUserId =
+    normalizeRequiredId(
+      userId,
+      "el usuario",
+    );
+
+  return {
+    userId: normalizedUserId,
+
+    favoritesRef: collection(
+      db,
+      "users",
+      normalizedUserId,
+      "favorites",
+    ),
+  };
+}
+
 function assertCurrentUser(
   userId: string,
 ): void {
@@ -76,6 +99,106 @@ function assertCurrentUser(
       "La sesión actual no coincide con el usuario.",
     );
   }
+}
+
+function getTimestampMillis(
+  value: unknown,
+): number {
+  if (
+    !value ||
+    typeof value !== "object"
+  ) {
+    return 0;
+  }
+
+  const candidate =
+    value as {
+      toMillis?: () => number;
+      seconds?: number;
+    };
+
+  if (
+    typeof candidate.toMillis ===
+    "function"
+  ) {
+    try {
+      const millis =
+        candidate.toMillis();
+
+      return Number.isFinite(millis)
+        ? millis
+        : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  if (
+    typeof candidate.seconds ===
+      "number" &&
+    Number.isFinite(
+      candidate.seconds,
+    )
+  ) {
+    return (
+      candidate.seconds * 1000
+    );
+  }
+
+  return 0;
+}
+
+function mapFavoriteIds(
+  documents: Array<{
+    id: string;
+    data: () => unknown;
+  }>,
+): string[] {
+  return documents
+    .map((document) => {
+      const data =
+        document.data() as
+          | Record<
+              string,
+              unknown
+            >
+          | undefined;
+
+      return {
+        listingId:
+          String(
+            document.id ?? "",
+          ).trim(),
+
+        createdAtMillis:
+          getTimestampMillis(
+            data?.createdAt,
+          ),
+      };
+    })
+    .filter(
+      (favorite) =>
+        Boolean(
+          favorite.listingId,
+        ),
+    )
+    .sort((a, b) => {
+      const timeDifference =
+        b.createdAtMillis -
+        a.createdAtMillis;
+
+      if (timeDifference !== 0) {
+        return timeDifference;
+      }
+
+      return a.listingId.localeCompare(
+        b.listingId,
+      );
+    })
+    .map(
+      (favorite) =>
+        favorite.listingId,
+    );
 }
 
 export function subscribeToListingFavorite(
@@ -119,6 +242,72 @@ export function subscribeToListingFavorite(
             ),
       );
     },
+  );
+}
+
+export function subscribeToUserListingFavoriteIds(
+  userId: string,
+  onChange: (
+    listingIds: string[],
+  ) => void,
+  onError?: (
+    error: Error,
+  ) => void,
+): () => void {
+  const context =
+    getFavoritesCollectionRef(
+      userId,
+    );
+
+  assertCurrentUser(
+    context.userId,
+  );
+
+  return onSnapshot(
+    context.favoritesRef,
+    (snapshot) => {
+      onChange(
+        mapFavoriteIds(
+          snapshot.docs,
+        ),
+      );
+    },
+    (error) => {
+      console.error(
+        "Error escuchando lista de favoritos:",
+        error,
+      );
+
+      onError?.(
+        error instanceof Error
+          ? error
+          : new Error(
+              "No pudimos cargar tus favoritos.",
+            ),
+      );
+    },
+  );
+}
+
+export async function getUserListingFavoriteIds(
+  userId: string,
+): Promise<string[]> {
+  const context =
+    getFavoritesCollectionRef(
+      userId,
+    );
+
+  assertCurrentUser(
+    context.userId,
+  );
+
+  const snapshot =
+    await getDocs(
+      context.favoritesRef,
+    );
+
+  return mapFavoriteIds(
+    snapshot.docs,
   );
 }
 
@@ -183,4 +372,32 @@ export async function toggleListingFavorite(
   );
 
   return true;
+}
+
+export async function removeListingFavorite(
+  userId: string,
+  listingId: string,
+): Promise<void> {
+  const context =
+    getFavoriteRef(
+      userId,
+      listingId,
+    );
+
+  assertCurrentUser(
+    context.userId,
+  );
+
+  const snapshot =
+    await getDoc(
+      context.favoriteRef,
+    );
+
+  if (!snapshot.exists()) {
+    return;
+  }
+
+  await deleteDoc(
+    context.favoriteRef,
+  );
 }
