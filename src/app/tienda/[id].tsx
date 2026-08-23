@@ -22,6 +22,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useStoreDetail } from "@/features/store-detail/useStoreDetail";
+import { StoreStoriesSection } from "@/features/store-stories/StoreStoriesSection";
 
 import type {
   StoreCatalogItem,
@@ -374,6 +375,15 @@ export default function StoreDetailScreen() {
         }
       >
         <StoreHero store={store} />
+
+        <StoreStoriesSection
+          storeId={store.id}
+          storeName={store.name}
+          visible={
+            store.visibleSections.stories !==
+            false
+          }
+        />
 
         {store.promoEnabled &&
           Boolean(
