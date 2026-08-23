@@ -23,6 +23,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useStoreDetail } from "@/features/store-detail/useStoreDetail";
 import { StoreStoriesSection } from "@/features/store-stories/StoreStoriesSection";
+import { StoreFollowCard } from "@/features/store-follow/StoreFollowCard";
 
 import type {
   StoreCatalogItem,
@@ -419,6 +420,12 @@ export default function StoreDetailScreen() {
           catalogCount={
             catalog.length
           }
+        />
+
+        <StoreFollowCard
+          storeId={store.id}
+          storeOwnerId={store.ownerId}
+          storeName={store.name}
         />
 
         <SectionCard title="Sobre la tienda">
