@@ -1,4 +1,5 @@
 import { SymbolView } from "expo-symbols";
+import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -674,8 +675,25 @@ function ProductResultCard({
 }: {
   listing: ExploreListing;
 }) {
+  const router = useRouter();
+
   return (
-    <View style={styles.resultCard}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Abrir ${listing.title}`}
+      onPress={() =>
+        router.push({
+          pathname: "/explorar/[id]",
+          params: {
+            id: listing.id,
+          },
+        })
+      }
+      style={({ pressed }) => [
+        styles.resultCard,
+        pressed && styles.resultCardPressed,
+      ]}
+    >
       <ResultImage
         imageUrl={listing.imageUrl}
         kind="product"
@@ -718,7 +736,19 @@ function ProductResultCard({
           </Text>
         )}
       </View>
-    </View>
+
+      <View style={styles.resultCardChevron}>
+        <SymbolView
+          name={{
+            ios: "chevron.right",
+            android: "chevron_right",
+            web: "chevron_right",
+          }}
+          size={18}
+          tintColor={MUTED_LIGHT}
+        />
+      </View>
+    </Pressable>
   );
 }
 
@@ -1237,6 +1267,18 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     paddingVertical: 2,
+  },
+
+  resultCardPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.995 }],
+  },
+
+  resultCardChevron: {
+    alignSelf: "center",
+    width: 22,
+    alignItems: "flex-end",
+    justifyContent: "center",
   },
 
   resultTopRow: {

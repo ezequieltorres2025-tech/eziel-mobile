@@ -1,5 +1,7 @@
 import {
   collection,
+  doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
@@ -255,6 +257,29 @@ export async function getExploreListings(): Promise<ExploreListing[]> {
       ),
     )
     .filter((listing) => listing.availableUnits > 0);
+}
+
+export async function getExploreListingById(
+  listingId: string,
+): Promise<ExploreListing | null> {
+  const normalizedListingId = String(listingId ?? "").trim();
+
+  if (!normalizedListingId) {
+    return null;
+  }
+
+  const snapshot = await getDoc(
+    doc(db, "listings", normalizedListingId),
+  );
+
+  if (!snapshot.exists()) {
+    return null;
+  }
+
+  return mapListing(
+    snapshot.id,
+    snapshot.data() as FirestoreData,
+  );
 }
 
 // ============================================================
@@ -588,6 +613,29 @@ export async function getExploreStores(): Promise<ExploreStore[]> {
         },
       ),
     );
+}
+
+export async function getExploreStoreById(
+  storeId: string,
+): Promise<ExploreStore | null> {
+  const normalizedStoreId = String(storeId ?? "").trim();
+
+  if (!normalizedStoreId) {
+    return null;
+  }
+
+  const snapshot = await getDoc(
+    doc(db, "stores", normalizedStoreId),
+  );
+
+  if (!snapshot.exists()) {
+    return null;
+  }
+
+  return mapStore(
+    snapshot.id,
+    snapshot.data() as FirestoreData,
+  );
 }
 
 // ============================================================
