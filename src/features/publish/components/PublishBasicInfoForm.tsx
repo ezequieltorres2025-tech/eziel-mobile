@@ -135,7 +135,7 @@ export function PublishBasicInfoForm({
           <View style={styles.fieldLabelRow}>
             <Text style={styles.fieldLabel}>Precio</Text>
 
-            <Text style={styles.optional}>Opcional</Text>
+            <Text style={styles.optional}>Obligatorio</Text>
           </View>
 
           <View
