@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useListingDetail } from "@/features/listing-detail/useListingDetail";
 import { ListingFavoriteButton } from "@/features/favorites/ListingFavoriteButton";
 import { ContactSellerButton } from "@/features/chat/ContactSellerButton";
+import { ListingSaleCard } from "@/features/listing-sale/ListingSaleCard";
 
 import type {
   ExploreListing,
@@ -250,6 +251,11 @@ export default function ListingDetailScreen() {
         />
 
         <ListingStock listing={listing} />
+
+        <ListingSaleCard
+          listing={listing}
+          onListingChanged={reload}
+        />
 
         <SectionCard title="Descripción">
           <Text style={styles.description}>
