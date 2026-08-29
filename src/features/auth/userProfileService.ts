@@ -91,30 +91,111 @@ export async function saveOrUpdateUserProfile(
   const now = Timestamp.now();
 
   if (userSnapshot.exists()) {
-    await updateDoc(userRef, {
-      displayName: normalizeText(
-        firebaseUser.displayName,
-        "Usuario",
-      ),
-      email: normalizeText(firebaseUser.email),
-      photoURL:
-        normalizeOptionalText(
-          firebaseUser.photoURL,
-        ) ?? null,
-      updatedAt: now,
-    });
+    const existingData =
+      userSnapshot.data();
 
-    const updatedSnapshot = await getDoc(userRef);
-
-    if (!updatedSnapshot.exists()) {
-      throw new Error(
-        "El perfil actualizado no pudo recuperarse.",
+    const hasDisplayName =
+      Object.prototype.hasOwnProperty.call(
+        existingData,
+        "displayName",
       );
+
+    const hasPhotoURL =
+      Object.prototype.hasOwnProperty.call(
+        existingData,
+        "photoURL",
+      );
+
+    const displayName =
+      hasDisplayName
+        ? normalizeText(
+            existingData.displayName,
+            "Usuario",
+          )
+        : normalizeText(
+            firebaseUser.displayName,
+            "Usuario",
+          );
+
+    const photoURL =
+      hasPhotoURL
+        ? normalizeOptionalText(
+            existingData.photoURL,
+          ) ?? null
+        : normalizeOptionalText(
+            firebaseUser.photoURL,
+          ) ?? null;
+
+    const email =
+      normalizeText(firebaseUser.email);
+
+    const shouldSeedDisplayName =
+      !hasDisplayName;
+
+    const shouldSeedPhotoURL =
+      !hasPhotoURL;
+
+    const shouldUpdateEmail =
+      normalizeText(existingData.email) !==
+      email;
+
+    const shouldUpdateFirestore =
+      shouldSeedDisplayName ||
+      shouldSeedPhotoURL ||
+      shouldUpdateEmail;
+
+    if (shouldUpdateFirestore) {
+      await updateDoc(userRef, {
+        ...(shouldSeedDisplayName
+          ? { displayName }
+          : {}),
+        ...(shouldSeedPhotoURL
+          ? { photoURL }
+          : {}),
+        ...(shouldUpdateEmail
+          ? { email }
+          : {}),
+        updatedAt: now,
+      });
+    }
+
+    if (
+      firebaseUser.displayName !== displayName ||
+      firebaseUser.photoURL !== photoURL
+    ) {
+      try {
+        await updateFirebaseAuthProfile(
+          firebaseUser,
+          {
+            displayName,
+            photoURL,
+          },
+        );
+      } catch (authSyncError) {
+        console.error(
+          "No se pudo sincronizar Firebase Auth desde Firestore:",
+          authSyncError,
+        );
+      }
     }
 
     return normalizeUserProfile(
       firebaseUser.uid,
-      updatedSnapshot.data(),
+      {
+        ...existingData,
+        ...(shouldSeedDisplayName
+          ? { displayName }
+          : {}),
+        ...(shouldSeedPhotoURL
+          ? { photoURL }
+          : {}),
+        ...(shouldUpdateEmail
+          ? { email }
+          : {}),
+        ...(shouldUpdateFirestore
+          ? { updatedAt: now }
+          : {}),
+      },
     );
   }
 

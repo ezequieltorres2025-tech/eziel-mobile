@@ -58,19 +58,26 @@ export default function ProfileScreen() {
   const [isSigningOut, setIsSigningOut] =
     useState(false);
 
+  const [
+    failedPhotoURL,
+    setFailedPhotoURL,
+  ] = useState<string | null>(null);
+
   const isBusy =
     isSigningIn ||
     isSigningOut;
 
   const displayName =
-    userProfile?.displayName?.trim() ||
-    user?.displayName?.trim() ||
-    "Usuario Eziel";
+    userProfile
+      ? userProfile.displayName?.trim() ||
+        "Usuario Eziel"
+      : user?.displayName?.trim() ||
+        "Usuario Eziel";
 
   const photoURL =
-    userProfile?.photoURL?.trim() ||
-    user?.photoURL?.trim() ||
-    "";
+    userProfile
+      ? userProfile.photoURL?.trim() || ""
+      : user?.photoURL?.trim() || "";
 
   const bio =
     userProfile?.bio?.trim() || "";
@@ -201,13 +208,19 @@ export default function ProfileScreen() {
                   styles.avatarContainer
                 }
               >
-                {photoURL ? (
+                {photoURL &&
+                failedPhotoURL !== photoURL ? (
                   <Image
                     source={{
                       uri: photoURL,
                     }}
                     style={styles.avatar}
                     accessibilityLabel="Foto de perfil"
+                    onError={() =>
+                      setFailedPhotoURL(
+                        photoURL,
+                      )
+                    }
                   />
                 ) : (
                   <Text
