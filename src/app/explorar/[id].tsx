@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useListingDetail } from "@/features/listing-detail/useListingDetail";
 import { ListingFavoriteButton } from "@/features/favorites/ListingFavoriteButton";
 import { ContactSellerButton } from "@/features/chat/ContactSellerButton";
+import { useUserProfiles } from "@/features/auth/useUserProfiles";
 import { ListingSaleCard } from "@/features/listing-sale/ListingSaleCard";
 
 import type {
@@ -705,11 +706,48 @@ function SellerCard({
   listing: ExploreListing;
   store: ExploreStore | null;
 }) {
+  const isIndividualSeller =
+    !store &&
+    !listing.storeName;
+
+  const {
+    profilesById:
+      sellerProfiles,
+  } = useUserProfiles(
+    isIndividualSeller
+      ? [listing.userId]
+      : [],
+  );
+
+  const sellerProfile =
+    isIndividualSeller
+      ? sellerProfiles[
+          listing.userId
+        ]
+      : undefined;
+
   const sellerName =
     store?.name ||
     listing.storeName ||
+    sellerProfile
+      ?.displayName
+      ?.trim() ||
     listing.userName ||
     "Usuario";
+
+  const sellerImageUrl =
+    store?.logoUrl ||
+    sellerProfile
+      ?.photoURL
+      ?.trim() ||
+    "";
+
+  const [
+    failedSellerImageUrl,
+    setFailedSellerImageUrl,
+  ] = useState<
+    string | null
+  >(null);
 
   const initials = sellerName
     .split(/\s+/)
@@ -738,12 +776,25 @@ function SellerCard({
       </View>
 
       <View style={styles.sellerContent}>
-        {store?.logoUrl ? (
+        {sellerImageUrl &&
+        failedSellerImageUrl !==
+          sellerImageUrl ? (
           <Image
-            source={{ uri: store.logoUrl }}
+            source={{
+              uri: sellerImageUrl,
+            }}
             resizeMode="cover"
-            accessibilityLabel={`Logo de ${store.name}`}
+            accessibilityLabel={
+              store
+                ? `Logo de ${store.name}`
+                : `Foto de perfil de ${sellerName}`
+            }
             style={styles.sellerAvatar}
+            onError={() =>
+              setFailedSellerImageUrl(
+                sellerImageUrl,
+              )
+            }
           />
         ) : (
           <View
