@@ -1,7 +1,12 @@
 import {
   useEffect,
+  useMemo,
   useState,
 } from "react";
+
+import {
+  useUserProfiles,
+} from "@/features/auth/useUserProfiles";
 
 import type {
   ChatConversation,
@@ -22,8 +27,8 @@ export function useUserConversations(
   userId: string | null,
 ): UserConversationsState {
   const [
-    conversations,
-    setConversations,
+    conversationSnapshots,
+    setConversationSnapshots,
   ] = useState<
     ChatConversation[]
   >([]);
@@ -44,7 +49,10 @@ export function useUserConversations(
 
   useEffect(() => {
     if (!userId) {
-      setConversations([]);
+      setConversationSnapshots(
+        [],
+      );
+
       setIsLoading(false);
       setError(null);
 
@@ -60,7 +68,7 @@ export function useUserConversations(
         (
           nextConversations,
         ) => {
-          setConversations(
+          setConversationSnapshots(
             nextConversations,
           );
 
@@ -86,6 +94,77 @@ export function useUserConversations(
   }, [
     userId,
   ]);
+
+  const participantIds =
+    useMemo(
+      () =>
+        Array.from(
+          new Set(
+            conversationSnapshots
+              .flatMap(
+                (
+                  conversation,
+                ) => [
+                  conversation.buyerId,
+                  conversation.sellerId,
+                ],
+              )
+              .map((id) =>
+                id.trim(),
+              )
+              .filter(Boolean),
+          ),
+        ),
+      [
+        conversationSnapshots,
+      ],
+    );
+
+  const {
+    profilesById,
+  } = useUserProfiles(
+    participantIds,
+  );
+
+  const conversations =
+    useMemo(
+      () =>
+        conversationSnapshots.map(
+          (
+            conversation,
+          ) => {
+            const buyerProfile =
+              profilesById[
+                conversation.buyerId
+              ];
+
+            const sellerProfile =
+              profilesById[
+                conversation.sellerId
+              ];
+
+            return {
+              ...conversation,
+
+              buyerName:
+                buyerProfile
+                  ?.displayName
+                  ?.trim() ||
+                conversation.buyerName,
+
+              sellerName:
+                sellerProfile
+                  ?.displayName
+                  ?.trim() ||
+                conversation.sellerName,
+            };
+          },
+        ),
+      [
+        conversationSnapshots,
+        profilesById,
+      ],
+    );
 
   return {
     conversations,

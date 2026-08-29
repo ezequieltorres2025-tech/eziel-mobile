@@ -4,11 +4,16 @@ import {
 } from "@react-native-firebase/auth";
 
 import {
+  collection,
   doc,
+  documentId,
   getDoc,
+  onSnapshot,
+  query,
   setDoc,
   Timestamp,
   updateDoc,
+  where,
   type DocumentData,
 } from "@react-native-firebase/firestore";
 
@@ -339,6 +344,145 @@ export async function updateCurrentUserProfile(
   );
 }
 
+export type UserProfilesById =
+  Record<string, UserProfile>;
+
+const USER_PROFILE_QUERY_CHUNK_SIZE = 10;
+
+export function subscribeToUserProfiles(
+  userIds: readonly string[],
+  onProfiles: (
+    profiles: UserProfilesById,
+  ) => void,
+  onError?: (
+    error: Error,
+  ) => void,
+): () => void {
+  const normalizedUserIds =
+    Array.from(
+      new Set(
+        userIds
+          .map((userId) =>
+            String(userId ?? "").trim(),
+          )
+          .filter(Boolean),
+      ),
+    ).sort();
+
+  if (
+    normalizedUserIds.length === 0
+  ) {
+    onProfiles({});
+
+    return () => {};
+  }
+
+  const chunks: string[][] = [];
+
+  for (
+    let index = 0;
+    index < normalizedUserIds.length;
+    index +=
+      USER_PROFILE_QUERY_CHUNK_SIZE
+  ) {
+    chunks.push(
+      normalizedUserIds.slice(
+        index,
+        index +
+          USER_PROFILE_QUERY_CHUNK_SIZE,
+      ),
+    );
+  }
+
+  const profilesByChunk =
+    new Map<
+      number,
+      UserProfilesById
+    >();
+
+  const emitProfiles =
+    () => {
+      const mergedProfiles:
+        UserProfilesById = {};
+
+      for (
+        const chunkProfiles
+        of profilesByChunk.values()
+      ) {
+        Object.assign(
+          mergedProfiles,
+          chunkProfiles,
+        );
+      }
+
+      onProfiles(
+        mergedProfiles,
+      );
+    };
+
+  const unsubscribes =
+    chunks.map(
+      (
+        chunk,
+        chunkIndex,
+      ) => {
+        const usersQuery =
+          query(
+            collection(
+              db,
+              "users",
+            ),
+            where(
+              documentId(),
+              "in",
+              chunk,
+            ),
+          );
+
+        return onSnapshot(
+          usersQuery,
+          (snapshot) => {
+            const chunkProfiles:
+              UserProfilesById = {};
+
+            for (
+              const profileDocument
+              of snapshot.docs
+            ) {
+              chunkProfiles[
+                profileDocument.id
+              ] =
+                normalizeUserProfile(
+                  profileDocument.id,
+                  profileDocument.data(),
+                );
+            }
+
+            profilesByChunk.set(
+              chunkIndex,
+              chunkProfiles,
+            );
+
+            emitProfiles();
+          },
+          (error) => {
+            onError?.(
+              error,
+            );
+          },
+        );
+      },
+    );
+
+  return () => {
+    for (
+      const unsubscribe
+      of unsubscribes
+    ) {
+      unsubscribe();
+    }
+  };
+}
 export async function syncUserProfile(
   firebaseUser: User,
 ): Promise<UserProfile> {

@@ -32,6 +32,9 @@ import {
   useAuth,
 } from "@/features/auth/AuthProvider";
 import {
+  useUserProfiles,
+} from "@/features/auth/useUserProfiles";
+import {
   getChatTimestampMillis,
 } from "@/features/chat/chatFirestoreService";
 import type {
@@ -156,7 +159,7 @@ export default function ChatScreen() {
   const typingActiveRef =
     useRef(false);
 
-  const otherName =
+  const otherUserId =
     useMemo(() => {
       if (
         !conversation ||
@@ -167,12 +170,47 @@ export default function ChatScreen() {
 
       return conversation.buyerId ===
         user.uid
-        ? conversation.sellerName ||
-            "Vendedor"
-        : conversation.buyerName ||
-            "Comprador";
+        ? conversation.sellerId
+        : conversation.buyerId;
     }, [
       conversation,
+      user,
+    ]);
+
+  const {
+    profilesById:
+      participantProfiles,
+  } = useUserProfiles([
+    otherUserId,
+  ]);
+
+  const otherName =
+    useMemo(() => {
+      if (
+        !conversation ||
+        !user
+      ) {
+        return "";
+      }
+
+      const snapshotName =
+        conversation.buyerId ===
+          user.uid
+          ? conversation.sellerName ||
+            "Vendedor"
+          : conversation.buyerName ||
+            "Comprador";
+
+      return (
+        participantProfiles[
+          otherUserId
+        ]?.displayName?.trim() ||
+        snapshotName
+      );
+    }, [
+      conversation,
+      otherUserId,
+      participantProfiles,
       user,
     ]);
 
