@@ -469,6 +469,24 @@ export default function ProfileScreen() {
 
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityLabel="Abrir mi tienda"
+                  onPress={() => router.push("/mi-tienda")}
+                  style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
+                >
+                  <View style={styles.menuIcon}>
+                    <SymbolView name={{ ios: "storefront.fill", android: "store", web: "store" }} size={20} tintColor={ORANGE} />
+                  </View>
+                  <View style={styles.menuContent}>
+                    <Text style={styles.menuTitle}>Mi tienda</Text>
+                    <Text style={styles.menuDescription}>Creá tu tienda o consultá los datos de tu negocio.</Text>
+                  </View>
+                  <SymbolView name={{ ios: "chevron.right", android: "navigate_next", web: "chevron_right" }} size={20} tintColor={MUTED} />
+                </Pressable>
+
+                <View style={styles.divider} />
+
+                <Pressable
+                  accessibilityRole="button"
                   accessibilityLabel="Abrir mis publicaciones"
                   onPress={() =>
                     router.push(
