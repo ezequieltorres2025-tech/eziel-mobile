@@ -20,6 +20,14 @@ export interface ListingSale {
   updatedAt?: unknown;
 }
 
+export interface RequestListingSaleData {
+  listingId: string;
+  sellerId: string;
+  buyerId: string;
+  buyerName: string;
+  quantity?: number;
+}
+
 export interface ConfirmListingSaleData {
   listingId: string;
   buyerId: string;

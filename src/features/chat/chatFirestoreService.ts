@@ -25,6 +25,7 @@ import type {
   ChatMessage,
   ChatTimestamp,
   CreateConversationParams,
+  ListingBuyerCandidate,
   SendChatMessageParams,
 } from "./chatTypes";
 
@@ -281,6 +282,144 @@ function sortConversationsByNewest(
   );
 }
 
+function mapBuyerCandidate(
+  conversation: ChatConversation,
+): ListingBuyerCandidate {
+  return {
+    buyerId:
+      conversation.buyerId,
+
+    buyerName:
+      conversation.buyerName ||
+      "Comprador",
+
+    conversationId:
+      conversation.id,
+
+    listingId:
+      conversation.listingId,
+
+    listingTitle:
+      conversation.listingTitle ||
+      "Publicación",
+
+    listingImageUrl:
+      conversation.listingImageUrl,
+
+    lastMessage:
+      conversation.lastMessage,
+
+    lastMessageAt:
+      conversation.lastMessageAt,
+
+    createdAt:
+      conversation.createdAt,
+
+    updatedAt:
+      conversation.updatedAt,
+  };
+}
+
+export async function getListingBuyerCandidates(
+  listingId: string,
+  sellerId: string,
+): Promise<ListingBuyerCandidate[]> {
+  const normalizedListingId =
+    normalizeRequiredId(
+      listingId,
+      "la publicación",
+    );
+
+  const normalizedSellerId =
+    normalizeRequiredId(
+      sellerId,
+      "el vendedor",
+    );
+
+  assertCurrentUser(
+    normalizedSellerId,
+  );
+
+  const conversationsQuery =
+    query(
+      collection(
+        db,
+        "conversations",
+      ),
+      where(
+        "participants",
+        "array-contains",
+        normalizedSellerId,
+      ),
+    );
+
+  const snapshot =
+    await getDocs(
+      conversationsQuery,
+    );
+
+  const conversations =
+    snapshot.docs
+      .map((conversationDoc) =>
+        mapConversation(
+          conversationDoc.id,
+          conversationDoc.data() as
+            FirestoreData,
+        ),
+      )
+      .filter(
+        (conversation) =>
+          conversation.listingId ===
+            normalizedListingId &&
+          conversation.sellerId ===
+            normalizedSellerId &&
+          Boolean(
+            conversation.buyerId,
+          ) &&
+          conversation.buyerId !==
+            normalizedSellerId &&
+          conversation.participants.includes(
+            normalizedSellerId,
+          ) &&
+          conversation.participants.includes(
+            conversation.buyerId,
+          ),
+      );
+
+  const sortedConversations =
+    sortConversationsByNewest(
+      conversations,
+    );
+
+  const candidatesByBuyerId =
+    new Map<
+      string,
+      ListingBuyerCandidate
+    >();
+
+  sortedConversations.forEach(
+    (conversation) => {
+      if (
+        candidatesByBuyerId.has(
+          conversation.buyerId,
+        )
+      ) {
+        return;
+      }
+
+      candidatesByBuyerId.set(
+        conversation.buyerId,
+        mapBuyerCandidate(
+          conversation,
+        ),
+      );
+    },
+  );
+
+  return Array.from(
+    candidatesByBuyerId.values(),
+  );
+}
 export async function createOrGetConversation(
   params: CreateConversationParams,
 ): Promise<string> {

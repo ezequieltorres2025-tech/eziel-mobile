@@ -32,6 +32,19 @@ export interface ChatConversation {
   unreadCount: number;
 }
 
+export interface ListingBuyerCandidate {
+  buyerId: string;
+  buyerName: string;
+  conversationId: string;
+  listingId: string;
+  listingTitle: string;
+  listingImageUrl: string;
+  lastMessage: string;
+  lastMessageAt: ChatTimestamp | null;
+  createdAt: ChatTimestamp | null;
+  updatedAt: ChatTimestamp | null;
+}
+
 export interface CreateConversationParams {
   listingId: string;
   listingTitle: string;

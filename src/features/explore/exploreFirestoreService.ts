@@ -3,6 +3,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   orderBy,
   query,
   where,
@@ -259,6 +260,79 @@ export async function getExploreListings(): Promise<ExploreListing[]> {
     .filter((listing) => listing.availableUnits > 0);
 }
 
+export function subscribeToSellerListings(
+  sellerId: string,
+  callback: (
+    listings: ExploreListing[],
+  ) => void,
+  onError?: (
+    error: Error,
+  ) => void,
+): () => void {
+  const normalizedSellerId =
+    String(
+      sellerId ?? "",
+    ).trim();
+
+  if (!normalizedSellerId) {
+    callback([]);
+
+    return () => undefined;
+  }
+
+  const sellerListingsQuery =
+    query(
+      collection(
+        db,
+        "listings",
+      ),
+      where(
+        "userId",
+        "==",
+        normalizedSellerId,
+      ),
+    );
+
+  return onSnapshot(
+    sellerListingsQuery,
+    (snapshot) => {
+      const listings =
+        snapshot.docs
+          .map((document) =>
+            mapListing(
+              document.id,
+              document.data() as
+                FirestoreData,
+            ),
+          )
+          .sort(
+            (
+              listingA,
+              listingB,
+            ) =>
+              getTimestampMillis(
+                listingB.createdAt,
+              ) -
+              getTimestampMillis(
+                listingA.createdAt,
+              ),
+          );
+
+      callback(
+        listings,
+      );
+    },
+    (error) => {
+      onError?.(
+        error instanceof Error
+          ? error
+          : new Error(
+              "No pudimos actualizar tus publicaciones.",
+            ),
+      );
+    },
+  );
+}
 export async function getExploreListingById(
   listingId: string,
 ): Promise<ExploreListing | null> {

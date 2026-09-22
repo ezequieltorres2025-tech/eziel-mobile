@@ -469,6 +469,78 @@ export default function ProfileScreen() {
 
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityLabel="Abrir mis publicaciones"
+                  onPress={() =>
+                    router.push(
+                      "/mis-publicaciones",
+                    )
+                  }
+                  style={({
+                    pressed,
+                  }) => [
+                    styles.menuItem,
+                    pressed &&
+                      styles.menuItemPressed,
+                  ]}
+                >
+                  <View
+                    style={
+                      styles.menuIcon
+                    }
+                  >
+                    <SymbolView
+                      name={{
+                        ios: "shippingbox.fill",
+                        android:
+                          "inventory_2",
+                        web: "inventory_2",
+                      }}
+                      size={20}
+                      tintColor={ORANGE}
+                    />
+                  </View>
+
+                  <View
+                    style={
+                      styles.menuContent
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.menuTitle
+                      }
+                    >
+                      Mis publicaciones
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.menuDescription
+                      }
+                    >
+                      Administrá stock,
+                      ventas y
+                      confirmaciones.
+                    </Text>
+                  </View>
+
+                  <SymbolView
+                    name={{
+                      ios: "chevron.right",
+                      android:
+                        "navigate_next",
+                      web: "chevron_right",
+                    }}
+                    size={20}
+                    tintColor={MUTED}
+                  />
+                </Pressable>
+
+                <View
+                  style={styles.divider}
+                />
+                <Pressable
+                  accessibilityRole="button"
                   accessibilityLabel="Abrir mis favoritos"
                   onPress={() =>
                     router.push(

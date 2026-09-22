@@ -22,6 +22,7 @@ import type {
   ConfirmListingSaleData,
   ListingSale,
   ListingSaleStatus,
+  RequestListingSaleData,
 } from "./listingSaleTypes";
 
 type FirestoreData =
@@ -35,6 +36,7 @@ type ListingStockState = {
 };
 
 type SaleNotificationType =
+  | "sale_confirmation_requested"
   | "sale_confirmed"
   | "sale_cancelled";
 
@@ -1407,4 +1409,399 @@ export async function cancelListingSale(
       );
     }
   }
+}
+
+export async function getSellerSales(
+  sellerId: string,
+): Promise<ListingSale[]> {
+  const normalizedSellerId =
+    normalizeRequiredId(
+      sellerId,
+      "el vendedor",
+    );
+
+  assertCurrentUser(
+    normalizedSellerId,
+  );
+
+  const salesQuery =
+    query(
+      collection(
+        db,
+        "listingSales",
+      ),
+      where(
+        "sellerId",
+        "==",
+        normalizedSellerId,
+      ),
+    );
+
+  const snapshot =
+    await getDocs(
+      salesQuery,
+    );
+
+  return sortSalesByNewest(
+    snapshot.docs.map(
+      (saleDoc) =>
+        mapListingSale(
+          saleDoc.id,
+          saleDoc.data() as
+            FirestoreData,
+        ),
+    ),
+  );
+}
+
+export function subscribeToSellerSales(
+  sellerId: string,
+  callback: (
+    sales: ListingSale[],
+  ) => void,
+  onError?: (
+    error: Error,
+  ) => void,
+): () => void {
+  const normalizedSellerId =
+    String(
+      sellerId ?? "",
+    ).trim();
+
+  if (!normalizedSellerId) {
+    callback([]);
+
+    return () => undefined;
+  }
+
+  assertCurrentUser(
+    normalizedSellerId,
+  );
+
+  const salesQuery =
+    query(
+      collection(
+        db,
+        "listingSales",
+      ),
+      where(
+        "sellerId",
+        "==",
+        normalizedSellerId,
+      ),
+    );
+
+  return onSnapshot(
+    salesQuery,
+    (snapshot) => {
+      callback(
+        sortSalesByNewest(
+          snapshot.docs.map(
+            (saleDoc) =>
+              mapListingSale(
+                saleDoc.id,
+                saleDoc.data() as
+                  FirestoreData,
+              ),
+          ),
+        ),
+      );
+    },
+    (error) => {
+      onError?.(
+        error instanceof Error
+          ? error
+          : new Error(
+              "No pudimos actualizar tus operaciones.",
+            ),
+      );
+    },
+  );
+}
+export async function requestListingSale(
+  input: RequestListingSaleData,
+): Promise<string> {
+  const listingId =
+    normalizeRequiredId(
+      input.listingId,
+      "la publicación",
+    );
+
+  const sellerId =
+    normalizeRequiredId(
+      input.sellerId,
+      "el vendedor",
+    );
+
+  const buyerId =
+    normalizeRequiredId(
+      input.buyerId,
+      "el comprador",
+    );
+
+  assertCurrentUser(
+    sellerId,
+  );
+
+  if (sellerId === buyerId) {
+    throw new Error(
+      "El vendedor no puede registrarse como comprador.",
+    );
+  }
+
+  const buyerName =
+    String(
+      input.buyerName || "",
+    )
+      .trim()
+      .slice(
+        0,
+        100,
+      ) ||
+    "Comprador";
+
+  const quantity =
+    normalizeOperationQuantity(
+      input.quantity ?? 1,
+    );
+
+  const sellerSales =
+    await getSellerSales(
+      sellerId,
+    );
+
+  const existingPendingSale =
+    sellerSales.find(
+      (sale) =>
+        sale.listingId ===
+          listingId &&
+        sale.buyerId ===
+          buyerId &&
+        sale.status ===
+          "pending_confirmation",
+    );
+
+  if (existingPendingSale) {
+    throw new Error(
+      "Esta persona ya tiene una solicitud de confirmación pendiente para esta publicación.",
+    );
+  }
+
+  const saleRef =
+    doc(
+      collection(
+        db,
+        "listingSales",
+      ),
+    );
+
+  const saleId =
+    saleRef.id;
+
+  const listingRef =
+    doc(
+      db,
+      "listings",
+      listingId,
+    );
+
+  const notificationContext =
+    await runTransaction(
+      db,
+      async (transaction) => {
+        const listingSnapshot =
+          await transaction.get(
+            listingRef,
+          );
+
+        if (
+          !listingSnapshot.exists()
+        ) {
+          throw new Error(
+            "La publicación no existe.",
+          );
+        }
+
+        const listingData =
+          listingSnapshot.data() as
+            FirestoreData;
+
+        const listingSellerId =
+          String(
+            listingData.userId ??
+              "",
+          ).trim();
+
+        const listingTitle =
+          String(
+            listingData.title ??
+              "Publicación",
+          ).trim() ||
+          "Publicación";
+
+        const sellerName =
+          String(
+            listingData.userName ??
+              "Vendedor",
+          )
+            .trim()
+            .slice(
+              0,
+              100,
+            ) ||
+          "Vendedor";
+
+        if (
+          listingSellerId !==
+          sellerId
+        ) {
+          throw new Error(
+            "No tenés permiso para registrar esta operación.",
+          );
+        }
+
+        const currentStock =
+          getListingStockState(
+            listingData,
+          );
+
+        if (
+          currentStock.availableUnits <
+          quantity
+        ) {
+          throw new Error(
+            quantity === 1
+              ? "No quedan unidades disponibles para iniciar otro trato."
+              : `Solo quedan ${currentStock.availableUnits} unidades disponibles para este trato.`,
+          );
+        }
+
+        const nextReservedUnits =
+          currentStock.reservedUnits +
+          quantity;
+
+        const nextStock:
+          ListingStockState = {
+          stockTotal:
+            currentStock.stockTotal,
+
+          soldUnits:
+            currentStock.soldUnits,
+
+          reservedUnits:
+            nextReservedUnits,
+
+          availableUnits:
+            Math.max(
+              currentStock.stockTotal -
+                currentStock.soldUnits -
+                nextReservedUnits,
+              0,
+            ),
+        };
+
+        const nextStatus =
+          getStatusFromStock(
+            nextStock,
+          );
+
+        transaction.set(
+          saleRef,
+          {
+            listingId,
+            listingTitle,
+            sellerId,
+            buyerId,
+            buyerName,
+            quantity,
+            status:
+              "pending_confirmation",
+            requestedAt:
+              serverTimestamp(),
+            createdAt:
+              serverTimestamp(),
+            updatedAt:
+              serverTimestamp(),
+          },
+        );
+
+        transaction.update(
+          listingRef,
+          {
+            stockTotal:
+              nextStock.stockTotal,
+
+            reservedUnits:
+              nextStock.reservedUnits,
+
+            soldUnits:
+              nextStock.soldUnits,
+
+            sold: false,
+
+            status:
+              nextStatus,
+
+            saleId,
+
+            saleMode:
+              nextStock.stockTotal ===
+              1
+                ? "marketplace_user"
+                : deleteField(),
+
+            soldAt:
+              deleteField(),
+
+            updatedAt:
+              serverTimestamp(),
+          },
+        );
+
+        return {
+          listingTitle,
+          sellerName,
+        };
+      },
+    );
+
+  try {
+    await createSaleNotification({
+      recipientId:
+        buyerId,
+
+      actorId:
+        sellerId,
+
+      actorName:
+        notificationContext.sellerName,
+
+      type:
+        "sale_confirmation_requested",
+
+      title:
+        "Solicitud de confirmación",
+
+      body:
+        quantity === 1
+          ? `${notificationContext.sellerName} indicó que hubo un trato por "${notificationContext.listingTitle}". Revisá la operación y confirmá si corresponde.`
+          : `${notificationContext.sellerName} indicó que hubo un trato por ${quantity} unidades de "${notificationContext.listingTitle}". Revisá la operación y confirmá si corresponde.`,
+
+      href:
+        `/explorar/${listingId}`,
+
+      referenceId:
+        `${saleId}_requested`,
+
+      listingId,
+      saleId,
+    });
+  } catch (notificationError) {
+    console.warn(
+      "La solicitud quedó registrada, pero no se pudo crear la notificación:",
+      notificationError,
+    );
+  }
+
+  return saleId;
 }
