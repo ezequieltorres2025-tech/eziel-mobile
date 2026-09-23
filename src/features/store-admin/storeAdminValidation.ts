@@ -1,4 +1,4 @@
-import type { CreateStoreInput, StoreAdmin, StorePlan } from "./storeAdminTypes";
+import { STORE_INFORMATION_FIELDS, type CreateStoreInput, type StoreAdmin, type StorePlan, type StoreInformation, type StoreInformationChanges } from "./storeAdminTypes";
 
 export function normalizeStoreInput(input: CreateStoreInput): CreateStoreInput {
   return {
@@ -17,6 +17,18 @@ export function validateStoreInput(input: CreateStoreInput): Partial<Record<keyo
   if (input.name.trim().length > 120) errors.name = "Usá hasta 120 caracteres.";
   if (!input.city.trim()) errors.city = "Ingresá la ciudad de tu tienda.";
   return errors;
+}
+
+export function getStoreInformationChanges(
+  initial: StoreInformation,
+  values: StoreInformation,
+): StoreInformationChanges {
+  const normalized = normalizeStoreInput(values);
+  const changes: StoreInformationChanges = {};
+  for (const field of STORE_INFORMATION_FIELDS) {
+    if (initial[field] !== normalized[field]) changes[field] = normalized[field];
+  }
+  return changes;
 }
 
 function timestampMillis(value: unknown): number | null {

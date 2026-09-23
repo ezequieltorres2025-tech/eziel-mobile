@@ -1,10 +1,14 @@
-import { addDoc, collection, getDocsFromServer, query, serverTimestamp, where } from "@react-native-firebase/firestore";
+import { addDoc, collection, doc, getDocsFromServer, query, serverTimestamp, updateDoc, where } from "@react-native-firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { DEFAULT_VISIBLE_SECTIONS, type CreateStoreInput, type OwnerStoreResult, type StoreAdmin } from "./storeAdminTypes";
+import { DEFAULT_VISIBLE_SECTIONS, STORE_INFORMATION_FIELDS, type CreateStoreInput, type OwnerStoreResult, type StoreAdmin, type StoreInformationChanges } from "./storeAdminTypes";
 import { normalizeStoreInput, validateStoreInput } from "./storeAdminValidation";
 
 export class MultipleStoresError extends Error {
   constructor() { super("Encontramos más de una tienda asociada a tu cuenta."); }
+}
+
+export class StoreGpsConfirmationRequiredError extends Error {
+  constructor() { super("Es necesario confirmar la ubicación GPS guardada."); }
 }
 
 export class UnconfirmedStoreCreationError extends Error {
@@ -56,6 +60,50 @@ export async function getOwnerStore(ownerId: string): Promise<OwnerStoreResult> 
 }
 
 const pendingCreations = new Set<string>();
+
+export async function updateOwnerStoreInformation(
+  ownerId: string,
+  storeId: string,
+  changes: StoreInformationChanges,
+  gpsChangeConfirmed = false,
+): Promise<StoreAdmin> {
+  assertOwner(ownerId);
+  if (!storeId.trim() || storeId.includes("/")) throw new Error("La tienda no es válida.");
+  const result = await getOwnerStore(ownerId);
+  if (result.kind === "multiple") throw new MultipleStoresError();
+  if (result.kind === "empty") throw new Error("No encontramos una tienda asociada a tu cuenta.");
+  const current = result.store;
+  if (current.id !== storeId) throw new Error("La tienda ya no coincide con la asociada a tu cuenta.");
+
+  const patch: StoreInformationChanges = {};
+  // Solo se leen claves propias de la whitelist; nunca se copia el objeto del caller.
+  for (const field of STORE_INFORMATION_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(changes, field)) continue;
+    const value: unknown = changes[field];
+    if (typeof value !== "string") throw new Error("Los datos comerciales deben ser texto.");
+    let normalized = value.trim();
+    if (field === "category" && !normalized) normalized = "Otros";
+    if (field === "province" && !normalized) normalized = "Neuquén";
+    if (normalized !== current[field]) patch[field] = normalized;
+  }
+  if (Object.keys(patch).length === 0) return current;
+  const errors = validateStoreInput({ ...current, ...patch });
+  if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
+  const locationChanged = "address" in patch || "city" in patch || "province" in patch;
+  const hasCoordinates = current.latitude !== null && current.longitude !== null &&
+    Number.isFinite(current.latitude) && Number.isFinite(current.longitude) &&
+    Math.abs(current.latitude) <= 90 && Math.abs(current.longitude) <= 180;
+  if (locationChanged && hasCoordinates && !gpsChangeConfirmed) {
+    throw new StoreGpsConfirmationRequiredError();
+  }
+  assertOwner(ownerId);
+  await updateDoc(doc(db, "stores", storeId), {
+    ...patch,
+    updatedAt: serverTimestamp(),
+  });
+  // No se inventa un timestamp local ni se exige una segunda lectura tras el ACK.
+  return { ...current, ...patch, updatedAt: undefined };
+}
 
 export async function createOwnerStore(ownerId: string, input: CreateStoreInput): Promise<StoreAdmin> {
   assertOwner(ownerId);

@@ -44,6 +44,13 @@ export interface CreateStoreInput {
   whatsapp: string;
 }
 
+export const STORE_INFORMATION_FIELDS = [
+  "name", "category", "description", "city", "province", "address", "phone", "whatsapp",
+] as const;
+
+export type StoreInformation = Pick<StoreAdmin, typeof STORE_INFORMATION_FIELDS[number]>;
+export type StoreInformationChanges = Partial<StoreInformation>;
+
 export type OwnerStoreResult =
   | { kind: "empty" }
   | { kind: "single"; store: StoreAdmin }

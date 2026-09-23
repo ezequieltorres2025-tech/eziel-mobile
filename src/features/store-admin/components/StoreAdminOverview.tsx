@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { StoreAdmin } from "../storeAdminTypes";
 import { effectiveStorePlan } from "../storeAdminValidation";
 
-export function StoreAdminOverview({ store }: { store: StoreAdmin }) {
+export function StoreAdminOverview({ store, onEdit }: { store: StoreAdmin; onEdit: () => void }) {
   const plan = effectiveStorePlan(store);
   return (
     <View style={styles.card}>
@@ -19,6 +19,9 @@ export function StoreAdminOverview({ store }: { store: StoreAdmin }) {
         {store.whatsapp ? <Text style={styles.text}>WhatsApp: {store.whatsapp}</Text> : null}
       </View>
       <Text style={styles.plan}>Plan actual: {plan === "premium_plus" ? "Premium Plus" : plan === "premium" ? "Premium" : "Gratis"}</Text>
+      <Pressable accessibilityRole="button" onPress={onEdit} style={({ pressed }) => [styles.button, pressed && { opacity: 0.75 }]}>
+        <Text style={styles.buttonText}>Editar información</Text>
+      </Pressable>
       <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: "/tienda/[id]", params: { id: store.id } })} style={({ pressed }) => [styles.button, pressed && { opacity: 0.75 }]}>
         <Text style={styles.buttonText}>Ver tienda pública</Text>
       </Pressable>
