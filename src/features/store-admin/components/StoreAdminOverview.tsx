@@ -19,6 +19,9 @@ export function StoreAdminOverview({ store, onEdit }: { store: StoreAdmin; onEdi
         {store.whatsapp ? <Text style={styles.text}>WhatsApp: {store.whatsapp}</Text> : null}
       </View>
       <Text style={styles.plan}>Plan actual: {plan === "premium_plus" ? "Premium Plus" : plan === "premium" ? "Premium" : "Gratis"}</Text>
+      <Pressable accessibilityRole="button" onPress={() => router.push("/mi-tienda-catalogo")} style={({ pressed }) => [styles.button, pressed && { opacity: 0.75 }]}>
+        <Text style={styles.buttonText}>Catálogo</Text>
+      </Pressable>
       <Pressable accessibilityRole="button" onPress={onEdit} style={({ pressed }) => [styles.button, pressed && { opacity: 0.75 }]}>
         <Text style={styles.buttonText}>Editar información</Text>
       </Pressable>
