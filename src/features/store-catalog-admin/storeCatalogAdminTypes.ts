@@ -37,3 +37,39 @@ export type OwnerCatalogResult =
 export const EMPTY_CATALOG_INPUT: CatalogItemInput = {
   type: "product", name: "", description: "", price: "", category: "Otros", stock: "0",
 };
+
+export type CatalogEditPatch = Partial<{
+  name: string; description: string; category: string;
+  price: number; type: CatalogItemType; stock: number;
+}>;
+
+export interface CatalogItemDetail {
+  id: string;
+  storeId: string;
+  storeOwnerId: string;
+  storeName: unknown;
+  input: CatalogItemInput;
+  active: boolean;
+  featured: unknown;
+  imageUrl: unknown;
+  imageUrls: unknown;
+  city: unknown;
+  province: unknown;
+  createdAt: unknown;
+  updatedAt: unknown;
+  // Valores originales: los fallbacks de presentación nunca son un patch.
+  original: Readonly<Record<keyof CatalogItemInput | "active", unknown>>;
+  offer: "none" | "inactive" | "blocked";
+  offerFields: Readonly<Record<string, unknown>>;
+}
+
+export type CatalogMutation =
+  | { kind: "edit"; input: CatalogItemInput }
+  | { kind: "status"; active: boolean }
+  | { kind: "delete" };
+
+export type CatalogEditorState =
+  | { kind: "closed" }
+  | { kind: "loading"; id: string }
+  | { kind: "error" | "missing" | "forbidden"; id: string; message: string }
+  | { kind: "ready"; detail: CatalogItemDetail };

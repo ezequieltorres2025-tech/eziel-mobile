@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ActivityIndicator, FlatList, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CreateCatalogItemForm } from "@/features/store-catalog-admin/components/CreateCatalogItemForm";
+import { EditCatalogItemForm } from "@/features/store-catalog-admin/components/EditCatalogItemForm";
 import { useOwnerCatalog } from "@/features/store-catalog-admin/useOwnerCatalog";
 import type { OwnerCatalogItem } from "@/features/store-catalog-admin/storeCatalogAdminTypes";
 import { catalogPlanLimit } from "@/features/store-catalog-admin/storeCatalogAdminValidation";
@@ -20,6 +21,26 @@ export default function OwnerCatalogScreen() {
     <Text style={styles.title}>Catálogo</Text>
     <Text style={styles.subtitle}>Administrá los productos y servicios de tu tienda.</Text>
   </View>;
+
+  if (state.kind === "single" && catalog.editor.kind !== "closed") {
+    const editor = catalog.editor;
+    return <SafeAreaView style={styles.root}>
+      <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {header}
+          {editor.kind === "ready" ? <EditCatalogItemForm key={`${state.store.ownerId}:${editor.detail.id}`}
+            detail={editor.detail} saving={saving} onMutate={catalog.mutateItem} onCancel={catalog.closeItem}
+            onReload={() => void catalog.openItem(editor.detail.id)} /> : <View style={styles.card}>
+            {editor.kind === "loading" ? <ActivityIndicator color="#F97316" /> : null}
+            <Text accessibilityLiveRegion="polite" style={styles.subtitle}>{editor.kind === "loading" ? "Cargando ítem…" : editor.message}</Text>
+            {editor.kind === "error" ? <Pressable accessibilityRole="button" style={styles.button}
+              onPress={() => void catalog.openItem(editor.id)}><Text style={styles.buttonText}>Reintentar</Text></Pressable> : null}
+            <Pressable accessibilityRole="button" style={styles.back} onPress={catalog.closeItem}><Text style={styles.backText}>Volver al catálogo</Text></Pressable>
+          </View>}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>;
+  }
 
   if (state.kind === "single" && editing) {
     return <SafeAreaView style={styles.root}>
@@ -77,14 +98,14 @@ export default function OwnerCatalogScreen() {
         {catalog.notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{catalog.notice}</Text> : null}
       </View>}
       ListEmptyComponent={<View style={styles.card}><Text style={styles.storeName}>Tu catálogo empieza acá</Text><Text style={styles.subtitle}>Agregá tu primer producto o servicio para mostrarlo en tu tienda.</Text></View>}
-      renderItem={({ item }) => <CatalogRow item={item} />} />
+      renderItem={({ item }) => <CatalogRow item={item} onPress={() => void catalog.openItem(item.id)} />} />
   </SafeAreaView>;
 }
 
-function CatalogRow({ item }: { item: OwnerCatalogItem }) {
+function CatalogRow({ item, onPress }: { item: OwnerCatalogItem; onPress: () => void }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const service = item.type === "service";
-  return <View style={styles.item}>
+  return <Pressable accessibilityRole="button" accessibilityLabel={`Administrar ${item.name}`} onPress={onPress} style={styles.item}>
     {item.imageUrl && failedUrl !== item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.image}
       accessibilityLabel={`Imagen de ${item.name}`} onError={() => setFailedUrl(item.imageUrl)} />
       : <View style={[styles.image, styles.fallback]}><Text style={styles.fallbackIcon}>{service ? "◇" : "□"}</Text><Text style={styles.meta}>Sin imagen</Text></View>}
@@ -95,7 +116,7 @@ function CatalogRow({ item }: { item: OwnerCatalogItem }) {
       <Text style={styles.price}>{priceLabel(item.price)}</Text>
       {!service ? <Text style={styles.meta}>Stock: {item.stock}</Text> : null}
     </View>
-  </View>;
+  </Pressable>;
 }
 
 const styles = StyleSheet.create({

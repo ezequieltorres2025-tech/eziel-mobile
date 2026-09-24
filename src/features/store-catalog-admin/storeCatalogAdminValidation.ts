@@ -1,5 +1,5 @@
 import type { StorePlan } from "../store-admin/storeAdminTypes";
-import type { CatalogItemInput } from "./storeCatalogAdminTypes";
+import type { CatalogEditPatch, CatalogItemDetail, CatalogItemInput } from "./storeCatalogAdminTypes";
 
 export function catalogPlanLimit(plan: StorePlan): number {
   return plan === "premium_plus" ? Infinity : plan === "premium" ? 100 : 10;
@@ -23,4 +23,32 @@ export function validateCatalogInput(input: CatalogItemInput): Partial<Record<ke
     errors.stock = "Ingresá un stock entero igual o mayor a cero.";
   }
   return errors;
+}
+
+export function catalogEditPatch(detail: CatalogItemDetail, input: CatalogItemInput): CatalogEditPatch {
+  const patch: CatalogEditPatch = {};
+  for (const key of ["name", "description", "category"] as const) {
+    if (input[key].trim() !== detail.input[key].trim()) patch[key] = input[key].trim();
+  }
+  if (input.price !== detail.input.price && parseCatalogNumber(input.price) !== parseCatalogNumber(detail.input.price)) {
+    patch.price = parseCatalogNumber(input.price);
+  }
+  if (input.type !== detail.input.type) {
+    patch.type = input.type;
+    patch.stock = input.type === "service" ? 0 : parseCatalogNumber(input.stock);
+  } else if (input.type === "product" && input.stock !== detail.input.stock &&
+      parseCatalogNumber(input.stock) !== parseCatalogNumber(detail.input.stock)) {
+    patch.stock = parseCatalogNumber(input.stock);
+  }
+  return patch;
+}
+
+export function validateCatalogEdit(detail: CatalogItemDetail, input: CatalogItemInput): string | null {
+  const patch = catalogEditPatch(detail, input);
+  const errors = validateCatalogInput(input);
+  // Un stock legacy inválido que no se edita no se normaliza ni bloquea otro campo.
+  for (const key of Object.keys(patch) as (keyof CatalogItemInput)[]) {
+    if (errors[key]) return errors[key]!;
+  }
+  return null;
 }
