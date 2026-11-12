@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 
 const ORANGE = "#F97316";
 const ORANGE_DARK = "#EA580C";
@@ -51,17 +52,7 @@ export default function HomeScreen() {
             <Text style={styles.welcome}>Descubrí lo que está cerca</Text>
           </View>
 
-          <View style={styles.headerIcon}>
-            <SymbolView
-              name={{
-                ios: "bell.fill",
-                android: "notifications",
-                web: "notifications",
-              }}
-              size={22}
-              tintColor={TEXT}
-            />
-          </View>
+          <NotificationBell />
         </View>
 
         <Pressable
@@ -284,17 +275,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800",
     letterSpacing: -0.6,
-  },
-
-  headerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: SURFACE,
-    borderWidth: 1,
-    borderColor: BORDER,
   },
 
   search: {
