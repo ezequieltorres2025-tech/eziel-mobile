@@ -8,8 +8,10 @@ import { useNotifications } from "@/features/notifications/NotificationsProvider
 import { NotificationItem } from "@/features/notifications/components/NotificationItem";
 import { notificationDestination } from "@/features/notifications/notificationNavigation";
 import type { AppNotification } from "@/features/notifications/notificationTypes";
+import { usePushRegistration } from "@/features/push/PushRegistrationProvider";
 
 export default function NotificationsScreen() {
+  const push = usePushRegistration();
   const { user, isLoading: authLoading } = useAuth();
   const { notifications, unreadCount, loading, refreshing, loadingMore, hasMore,
     error, refresh, loadMore, markAsRead } = useNotifications();
@@ -53,12 +55,27 @@ export default function NotificationsScreen() {
       contentContainerStyle={styles.list} ItemSeparatorComponent={() => <View style={styles.separator} />}
       renderItem={({ item }) => <NotificationItem item={item} onPress={() => open(item)} />}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void refresh(); }} tintColor="#F97316" colors={["#F97316"]} enabled={!!user} />}
-      ListHeaderComponent={error && user ? <View style={styles.error} accessibilityLiveRegion="polite">
+      ListHeaderComponent={<>
+        {push.available && <View style={styles.pushCard} accessibilityLiveRegion="polite">
+          <View style={styles.heading}>
+            <Text style={styles.pushTitle}>{push.status === "active" ? "Avisos activados" : "Avisos en tu dispositivo"}</Text>
+            <Text style={styles.subtitle}>{push.status === "error"
+              ? "No pudimos activar los avisos. Podés reintentar; tu bandeja sigue disponible."
+              : push.status === "denied"
+                ? "El permiso no está habilitado. Podés revisarlo en Ajustes; la bandeja sigue funcionando."
+                : "Prepará este dispositivo para recibir avisos de Eziel."}</Text>
+          </View>
+          {push.status === "working" ? <ActivityIndicator color="#EA580C" /> : push.status !== "active" &&
+            <Pressable accessibilityRole="button" onPress={() => { void push.activate(); }} style={styles.retry}>
+              <Text style={styles.actionText}>Activar avisos</Text>
+            </Pressable>}
+        </View>}
+        {error && user ? <View style={styles.error} accessibilityLiveRegion="polite">
         <Text style={styles.errorText}>{error}</Text>
         <Pressable accessibilityRole="button" disabled={refreshing} onPress={() => { void refresh(); }} style={styles.retry}>
           <Text style={styles.actionText}>Reintentar</Text>
         </Pressable>
-      </View> : null}
+      </View> : null}</>}
       ListEmptyComponent={<View style={styles.empty}>
         {busy ? <ActivityIndicator size="large" color="#F97316" /> : <>
           <View style={styles.emptyIcon}><SymbolView name={{ ios: "bell", android: "notifications_none", web: "notifications_none" }} size={32} tintColor="#EA580C" /></View>
@@ -77,6 +94,8 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
+  pushCard: { padding: 16, gap: 10, borderRadius: 16, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#FED7AA", marginBottom: 16 },
+  pushTitle: { color: "#0F172A", fontSize: 14, fontWeight: "700" },
   safe: { flex: 1, backgroundColor: "#F8FAFC" },
   header: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 20, paddingVertical: 18 },
   back: { width: 46, height: 46, borderRadius: 16, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E2E8F0", alignItems: "center", justifyContent: "center" },

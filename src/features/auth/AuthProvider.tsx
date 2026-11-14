@@ -30,6 +30,7 @@ import {
   type UserProfileUpdates,
 } from "@/features/auth/userProfileService";
 import { auth } from "@/lib/firebase";
+import { preparePushLogout } from "@/features/push/pushRegistrationLifecycle";
 
 export type GoogleLoginResult =
   | "success"
@@ -216,6 +217,7 @@ export function AuthProvider({
   const logout =
     useCallback(
       async (): Promise<void> => {
+        await preparePushLogout(auth.currentUser?.uid ?? null);
         const [
           googleSignOutResult,
           firebaseSignOutResult,

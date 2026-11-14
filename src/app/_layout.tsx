@@ -4,11 +4,13 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { NotificationsProvider } from "@/features/notifications/NotificationsProvider";
+import { PushRegistrationProvider } from "@/features/push/PushRegistrationProvider";
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
+        <PushRegistrationProvider>
         <NotificationsProvider>
         <StatusBar style="dark" />
 
@@ -25,6 +27,7 @@ export default function RootLayout() {
           />
         </Stack>
         </NotificationsProvider>
+        </PushRegistrationProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
