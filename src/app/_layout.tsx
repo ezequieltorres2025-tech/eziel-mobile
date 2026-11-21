@@ -5,6 +5,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { NotificationsProvider } from "@/features/notifications/NotificationsProvider";
 import { PushRegistrationProvider } from "@/features/push/PushRegistrationProvider";
+import { PushNotificationNavigationHandler } from "@/features/push/PushNotificationNavigationHandler";
 
 export default function RootLayout() {
   return (
@@ -26,6 +27,7 @@ export default function RootLayout() {
             }}
           />
         </Stack>
+        <PushNotificationNavigationHandler />
         </NotificationsProvider>
         </PushRegistrationProvider>
       </AuthProvider>

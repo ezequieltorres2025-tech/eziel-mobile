@@ -10,7 +10,9 @@ export function isNotificationResourceId(value: unknown): value is string {
     value !== "." && value !== "..";
 }
 
-export function notificationDestination(item: AppNotification): NotificationDestination | null {
+export function notificationDestination(
+  item: Pick<AppNotification, "type" | "listingId" | "storeId">,
+): NotificationDestination | null {
   switch (item.type) {
     case "sale_confirmation_requested":
     case "review_received":
