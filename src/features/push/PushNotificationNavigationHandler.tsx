@@ -22,8 +22,6 @@ function parseTap(message: RemoteMessage): PushTap | null {
       !isNotificationResourceId(data.recipientId)) return null;
   const type = NOTIFICATION_TYPES.find(value => value === data.type);
   if (!type) return null;
-  // Sales always carry a listing, even when the destination is the seller panel.
-  if (type.startsWith("sale_") && !isNotificationResourceId(data.listingId)) return null;
   const destination = notificationDestination({ type,
     listingId: typeof data.listingId === "string" ? data.listingId : undefined,
     storeId: typeof data.storeId === "string" ? data.storeId : undefined });
